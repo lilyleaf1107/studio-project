@@ -38,10 +38,11 @@ import {
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
   PRIORITY_LABELS,
+  PRIORITY_FLAGS,
   TASK_CATEGORIES,
 } from '@/lib/settings'
 import { canReviewTask } from '@/lib/permissions'
-import { cn, formatDate, formatDateTime, isOverdue } from '@/lib/utils'
+import { cn, formatDate, formatDateTime, isOverdue, getCountdown } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 
 export default function TaskDetail() {
@@ -219,6 +220,7 @@ export default function TaskDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
+        <span className="shrink-0 text-2xl leading-none">{PRIORITY_FLAGS[task.priority]}</span>
         <h1 className="text-lg font-bold truncate flex-1 min-w-0">{task.name}</h1>
       </div>
 
@@ -256,6 +258,16 @@ export default function TaskDetail() {
               <div className={cn('font-medium', overdue && 'text-red-600')}>
                 {formatDate(task.due_date)}
               </div>
+              {(() => {
+                const countdown = getCountdown(task.due_date, task.start_date)
+                if (!countdown) return null
+                const isOverdueFlag = countdown.startsWith('🔥')
+                return (
+                  <div className={cn('text-[11px] mt-0.5', isOverdueFlag ? 'text-red-500 font-medium' : 'text-muted-foreground')}>
+                    {countdown}
+                  </div>
+                )
+              })()}
             </div>
             <div>
               <div className="text-muted-foreground mb-1 flex items-center gap-1"><FolderGit2 className="h-3.5 w-3.5" /> 项目</div>

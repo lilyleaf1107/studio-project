@@ -8,7 +8,8 @@ import { useTasks } from '@/hooks/useTasks'
 import {
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
-  PRIORITY_LABELS
+  PRIORITY_LABELS,
+  PRIORITY_FLAGS
 } from '@/lib/settings'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -44,7 +45,9 @@ export default function Tasks() {
       if ((a.status === 'done') !== (b.status === 'done')) {
         return a.status === 'done' ? 1 : -1
       }
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+      const av = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER
+      const bv = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER
+      return av - bv
     })
   }, [tasks, tab, q])
 
@@ -102,7 +105,10 @@ export default function Tasks() {
                 <Card className="hover:border-primary hover:bg-muted/20 transition-all">
                   <CardContent className="p-3.5">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="font-medium text-sm min-w-0 truncate flex-1">{t.name}</div>
+                      <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                        <span className="shrink-0 text-sm leading-none">{PRIORITY_FLAGS[t.priority]}</span>
+                        <div className="font-medium text-sm min-w-0 truncate flex-1">{t.name}</div>
+                      </div>
                       <span className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap shrink-0',
                         overdue ? 'bg-red-50 text-red-700' : statusMeta.color

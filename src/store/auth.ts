@@ -3,12 +3,12 @@ import { supabase } from '@/lib/supabase'
 import type { Profile, UserRole } from '@/types'
 
 interface AuthState {
-  user: { id: string; email?: string } | null
+  user: { id: string; email?: string; phone?: string } | null
   profile: Profile | null
   loading: boolean
   init: () => Promise<void>
-  login: (email: string, password: string) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
+  login: (identifier: string, password: string) => Promise<void>
+  register: (name: string, identifier: string, password: string, usePhone?: boolean) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -39,12 +39,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     })
   },
 
-  async login(email: string, password: string) {
+  async login(identifier: string, password: string) {
+    // 手机号转成虚拟邮箱，用邮箱方式登录（不需要 Supabase Phone Provider）
+    const isPhone = /^\d{11}$/.test(identifier.replace(/\s/g, ''))
+    const email = isPhone ? `${identifier.replace(/\s/g, '')}@phone.local` : identifier
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   },
 
-  async register(name: string, email: string, password: string) {
+  async register(name: string, identifier: string, password: string, usePhone?: boolean) {
+    // 手机号转成虚拟邮箱注册
+    const email = usePhone
+      ? `${identifier.replace(/\s/g, '')}@phone.local`
+      : identifier
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

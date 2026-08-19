@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/auth'
-import { ROLE_LABELS, TASK_STATUS_LABELS, TASK_TYPE_LABELS, PRIORITY_LABELS } from '@/lib/settings'
+import { ROLE_LABELS, TASK_STATUS_LABELS, TASK_TYPE_LABELS, PRIORITY_LABELS, PRIORITY_FLAGS } from '@/lib/settings'
 import { useTasks } from '@/hooks/useTasks'
 import { useWorkRecords, RECORD_ACTION_LABELS, RECORD_ACTION_COLORS } from '@/hooks/useWorkRecords'
 import { useProfiles } from '@/hooks/useProfiles'
@@ -52,7 +52,9 @@ export default function Home() {
         const sa = order[a.status] || 9
         const sb = order[b.status] || 9
         if (sa !== sb) return sa - sb
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        const av = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER
+        const bv = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER
+        return av - bv
       })
       .slice(0, 5)
   }, [myTasks])
@@ -112,7 +114,10 @@ export default function Home() {
                     className="w-full text-left p-3 rounded-lg border hover:border-primary hover:bg-muted/30 transition-all"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-medium text-sm min-w-0 truncate flex-1">{t.name}</div>
+                      <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                        <span className="shrink-0 text-sm leading-none">{PRIORITY_FLAGS[t.priority]}</span>
+                        <div className="font-medium text-sm min-w-0 truncate flex-1">{t.name}</div>
+                      </div>
                       <span className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap shrink-0',
                         overdue ? 'bg-red-50 text-red-700' : statusMeta.color

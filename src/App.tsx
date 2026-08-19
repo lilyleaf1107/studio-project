@@ -4,6 +4,7 @@ import Login from '@/pages/auth/Login'
 import DesktopLayout from '@/pages/desktop/Layout'
 import MobileLayout from '@/pages/mobile/Layout'
 import { useAuthStore } from '@/store/auth'
+import { useThemeStore } from '@/store/theme'
 import { useDevice } from '@/hooks/useDevice'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -23,11 +24,13 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { isMobile } = useDevice()
   const initAuth = useAuthStore((s) => s.init)
+  const initTheme = useThemeStore((s) => s.init)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    initTheme()
     initAuth().finally(() => setReady(true))
-  }, [initAuth])
+  }, [initAuth, initTheme])
 
   if (!ready) {
     return (

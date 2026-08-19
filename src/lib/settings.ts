@@ -1,27 +1,26 @@
-export const DEFAULT_STAGES: { key: string; name: string }[] = [
-  { key: 'requirement', name: '需求确认' },
-  { key: 'design', name: '画图 / 设计' },
-  { key: 'review', name: '审核 / 修改' },
-  { key: 'test', name: '测试' },
+export const DEFAULT_STAGES: { key: string; name: string; isRepeatable?: boolean }[] = [
+  { key: 'material', name: '整理资料' },
+  { key: 'design', name: '设计画图' },
+  { key: 'review', name: '审核修改' },
+  { key: 'prototyping', name: '打样', isRepeatable: true },
+  { key: 'testing', name: '测试', isRepeatable: true },
   { key: 'manufacture', name: '加工' },
   { key: 'assembly', name: '装配' },
-  { key: 'debug', name: '调试' },
-  { key: 'acceptance', name: '验收' },
-  { key: 'archive', name: '归档' }
+  { key: 'acceptance', name: '验收' }
 ]
 
-export const TASK_CATEGORIES: { key: string; name: string }[] = [
-  { key: 'drawing', name: '画图' },
-  { key: 'design', name: '设计' },
-  { key: 'test', name: '测试' },
-  { key: 'manufacture', name: '加工' },
-  { key: 'assembly', name: '装配' },
-  { key: 'photo', name: '拍摄' },
-  { key: 'listing', name: '上架' },
-  { key: 'organize', name: '整理资料' },
-  { key: 'assist', name: '协助' },
-  { key: 'other', name: '其他' }
+export const DEFAULT_STAGE_ORDER: string[] = DEFAULT_STAGES.map(s => s.key)
+
+export const TASK_CATEGORIES: { key: string; name: string; isSystem: boolean }[] = [
+  { key: 'huatu', name: '画图', isSystem: true },
+  { key: 'yunying', name: '运营', isSystem: true },
+  { key: 'meigong', name: '美工', isSystem: true },
+  { key: 'paishe', name: '拍摄', isSystem: true },
+  { key: 'sheji', name: '设计', isSystem: true },
+  { key: 'ceshi', name: '测试', isSystem: true }
 ]
+
+export const JOB_TITLE_PRESETS: string[] = ['技术', '库管', '运营', '美工', '设计', '销售', '其他']
 
 export const PROJECT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '未开始', color: 'bg-slate-100 text-slate-600' },
@@ -45,9 +44,10 @@ export const TASK_STATUS_LABELS: Record<string, { label: string; color: string }
 }
 
 export const TASK_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  longterm: { label: '长线项目任务', color: 'bg-indigo-50 text-indigo-700' },
-  shortterm: { label: '短线设计任务', color: 'bg-teal-50 text-teal-700' },
-  temporary: { label: '临时普通任务', color: 'bg-pink-50 text-pink-700' }
+  anytime: { label: '随时进行', color: 'bg-slate-100 text-slate-600' },
+  normal: { label: '普通任务', color: 'bg-teal-50 text-teal-700' },
+  longterm: { label: '长线任务', color: 'bg-indigo-50 text-indigo-700' },
+  recurring: { label: '循环任务', color: 'bg-purple-50 text-purple-700' }
 }
 
 export const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
@@ -56,8 +56,14 @@ export const PRIORITY_LABELS: Record<string, { label: string; color: string }> =
   low: { label: '低', color: 'bg-slate-100 text-slate-600' }
 }
 
+export const PRIORITY_FLAGS: Record<string, string> = {
+  high: '🔴',
+  medium: '🟡',
+  low: '🔵'
+}
+
 export const ROLE_LABELS: Record<string, string> = {
-  owner: '老板',
   admin: '管理员',
+  owner: '老板',
   staff: '员工'
 }

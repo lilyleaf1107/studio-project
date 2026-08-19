@@ -51,9 +51,11 @@ export interface CreateTaskInput {
   stage?: string
   assignee_id: string
   collaborator_ids?: string[]
-  due_date: string
+  due_date?: string
+  start_date?: string
   priority?: TaskPriority
   description?: string
+  recurrence_rule?: string
 }
 
 export function useCreateTask() {
@@ -72,9 +74,11 @@ export function useCreateTask() {
           assignee_id: input.assignee_id,
           collaborator_ids: input.collaborator_ids,
           due_date: input.due_date,
+          start_date: input.start_date,
           priority: input.priority || 'medium',
           status: 'todo',
-          description: input.description
+          description: input.description,
+          recurrence_rule: input.recurrence_rule
         })
         .select()
         .single()
@@ -82,7 +86,7 @@ export function useCreateTask() {
       return data as Task
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: ['tasks'], exact: false })
     }
   })
 }
@@ -98,8 +102,25 @@ export function useUpdateTaskStatus() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['tasks'] })
-      qc.invalidateQueries({ queryKey: ['task'] })
+      qc.invalidateQueries({ queryKey: ['tasks'], exact: false })
+      qc.invalidateQueries({ queryKey: ['task'], exact: false })
+    }
+  })
+}
+
+export function useUpdateTaskPriority() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, priority }: { id: string; priority: TaskPriority }) => {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ priority })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'], exact: false })
+      qc.invalidateQueries({ queryKey: ['task'], exact: false })
     }
   })
 }

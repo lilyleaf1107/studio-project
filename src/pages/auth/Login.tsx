@@ -10,7 +10,8 @@ import { Briefcase } from 'lucide-react'
 
 export default function Login() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [email, setEmail] = useState('')
+  const [loginType, setLoginType] = useState<'email' | 'phone'>('phone')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -28,14 +29,18 @@ export default function Login() {
     setLoading(true)
     try {
       if (mode === 'login') {
-        await login(email, password)
+        await login(identifier, password)
         toast.success('登录成功')
       } else {
         if (!name.trim()) {
           toast.error('请填写姓名')
           return
         }
-        await register(name.trim(), email, password)
+        if (loginType === 'phone' && !/^\d{11}$/.test(identifier.replace(/\s/g, ''))) {
+          toast.error('请输入正确的 11 位手机号')
+          return
+        }
+        await register(name.trim(), identifier, password, loginType === 'phone')
         toast.success('注册成功，请登录')
         setMode('login')
         setPassword('')
@@ -60,6 +65,28 @@ export default function Login() {
           </p>
         </div>
 
+        {/* 邮箱/手机号 切换 */}
+        <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-lg">
+          <button
+            type="button"
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginType === 'phone' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'
+            }`}
+            onClick={() => { setLoginType('phone'); setIdentifier('') }}
+          >
+            手机号
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginType === 'email' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'
+            }`}
+            onClick={() => { setLoginType('email'); setIdentifier('') }}
+          >
+            邮箱
+          </button>
+        </div>
+
         <form onSubmit={onSubmit} className="space-y-4">
           {mode === 'register' && (
             <div className="space-y-2">
@@ -73,15 +100,30 @@ export default function Login() {
             </div>
           )}
           <div className="space-y-2">
-            <Label>邮箱</Label>
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
+            <Label>{loginType === 'phone' ? '手机号' : '邮箱'}</Label>
+            {loginType === 'phone' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground px-3 py-2 bg-slate-100 rounded-md whitespace-nowrap">+86</span>
+                <Input
+                  type="tel"
+                  placeholder="请输入 11 位手机号"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  autoComplete="tel"
+                  required
+                  className="flex-1"
+                />
+              </div>
+            ) : (
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            )}
           </div>
           <div className="space-y-2">
             <Label>密码</Label>

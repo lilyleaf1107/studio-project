@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -10,8 +11,11 @@ import {
   Users,
   ChevronRight,
   MoreHorizontal,
-  Edit2
+  Edit2,
+  Trash2,
+  Check
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,8 +59,10 @@ export default function ProjectDetail() {
   const { data: stages } = useStages()
   const createSub = useCreateSubProject()
   const updateStatus = useUpdateBigProjectStatus()
+  const qc = useQueryClient()
 
   const [subOpen, setSubOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [subForm, setSubForm] = useState({
     name: '',
     owner_id: profile?.id || '',
@@ -103,6 +109,21 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleDeleteProject() {
+    if (!project) return
+    try {
+      const { error } = await supabase.from('big_projects').delete().eq('id', project.id)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['big-projects'] })
+      qc.invalidateQueries({ queryKey: ['sub-projects', project.id] })
+      toast.success('项目已删除')
+      setDeleteOpen(false)
+      navigate('/projects')
+    } catch (e: any) {
+      toast.error(e?.message || '删除失败')
+    }
+  }
+
   if (isLoading) return <Loading />
   if (!project) {
     return (
@@ -137,20 +158,41 @@ export default function ProjectDetail() {
           </div>
         </div>
         {canEdit && (
-          <Select
-            defaultValue={project.status}
-            onValueChange={(v: ProjectStatus) => updateStatus.mutate({ id: project.id, status: v })}
-          >
-            <SelectTrigger className="w-40">
-              <span className="text-xs text-muted-foreground mr-2">改状态</span>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PROJECT_STATUS_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 shrink-0">
+            <Select
+              defaultValue={project.status}
+              onValueChange={(v: ProjectStatus) => updateStatus.mutate({ id: project.id, status: v })}
+            >
+              <SelectTrigger className="w-40">
+                <span className="text-xs text-muted-foreground mr-2">改状态</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PROJECT_STATUS_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="destructive" size="icon" title="删除项目">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>删除项目</DialogTitle>
+                </DialogHeader>
+                <div className="text-sm text-muted-foreground py-2">
+                  确定要删除项目「{project.name}」吗？该项目下的所有小项目和相关数据都会被移除，且操作不可恢复。
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)}>取消</Button>
+                  <Button variant="destructive" onClick={handleDeleteProject}>确认删除</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 
@@ -217,6 +259,65 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 项目阶段进度 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">项目阶段进度</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!stages || stages.length === 0) && (!subProjects || subProjects.length === 0) ? (
+            <div className="text-sm text-muted-foreground py-2">暂无阶段数据。</div>
+          ) : (
+            <div className="flex items-start overflow-x-auto pb-2">
+              {(stages || DEFAULT_STAGES).map((s: any, i: number) => {
+                const stageList = stages || DEFAULT_STAGES
+                const count = subProjects?.filter((sp) => sp.stage === s.key).length || 0
+                // 当前阶段 = 子项目中最靠前（进度最领先）的 stage
+                const subStageIdx = (subProjects || [])
+                  .map((sp) => stageList.findIndex((x: any) => x.key === sp.stage))
+                  .filter((idx) => idx >= 0)
+                const currentIdx = subStageIdx.length > 0 ? Math.max(...subStageIdx) : -1
+                const state: 'done' | 'current' | 'pending' =
+                  currentIdx < 0 ? 'pending' :
+                  i < currentIdx ? 'done' :
+                  i === currentIdx ? 'current' : 'pending'
+                const repeatable = !!(s.is_repeatable || s.isRepeatable)
+                const isLast = i === stageList.length - 1
+                return (
+                  <div key={s.key} className="flex items-start shrink-0">
+                    <div className="flex flex-col items-center gap-1.5 w-20">
+                      <div className={cn(
+                        'h-9 w-9 rounded-full flex items-center justify-center shrink-0',
+                        state === 'done' && 'bg-emerald-500 text-white',
+                        state === 'current' && 'bg-primary text-white animate-pulse',
+                        state === 'pending' && 'bg-muted text-muted-foreground'
+                      )}>
+                        {state === 'done' && <Check className="h-4 w-4" />}
+                        {state === 'current' && <span className="h-2.5 w-2.5 rounded-full bg-white" />}
+                        {state === 'pending' && <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />}
+                      </div>
+                      <div className="text-xs font-medium text-center leading-tight flex items-center gap-1 justify-center flex-wrap">
+                        <span>{s.name}</span>
+                        {repeatable && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 font-normal">可多轮</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">{count} 个小项目</div>
+                    </div>
+                    {!isLast && (
+                      <div className={cn(
+                        'h-0.5 w-8 mt-4 shrink-0',
+                        state === 'done' ? 'bg-emerald-500' : 'bg-border'
+                      )} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 说明 */}
       {project.description && (

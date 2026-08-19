@@ -1,3 +1,6 @@
+/**
+ * admin=管理员最高 | owner=老板 | staff=员工
+ */
 export type UserRole = 'owner' | 'admin' | 'staff'
 
 export interface Profile {
@@ -5,6 +8,7 @@ export interface Profile {
   name: string
   role: UserRole
   email?: string
+  job_title?: string
   created_at: string
 }
 
@@ -39,21 +43,35 @@ export interface SubProject {
   updated_at: string
 }
 
-export type TaskType = 'longterm' | 'shortterm' | 'temporary'
+/**
+ * anytime=随时任务 | normal=普通任务 | longterm=长期任务 | recurring=周期任务
+ * @deprecated 旧类型 longterm/shortterm/temporary 已废弃
+ */
+export type TaskType = 'anytime' | 'normal' | 'longterm' | 'recurring'
 export type TaskStatus = 'todo' | 'doing' | 'review' | 'done' | 'delayed' | 'returned' | 'paused'
+/**
+ * high=红旗(高) | medium=黄旗(中) | low=蓝旗(低)
+ */
 export type TaskPriority = 'high' | 'medium' | 'low'
 
 export interface Task {
   id: string
   name: string
   type: TaskType
+  /**
+   * @deprecated 请使用 task_category_id 替代
+   */
   task_category?: string
+  task_category_id?: string
+  start_date?: string
+  recurrence_rule?: string
+  round_number?: number
   big_project_id?: string
   sub_project_id?: string
   stage?: string
   assignee_id: string
   collaborator_ids?: string[]
-  due_date: string
+  due_date?: string
   priority: TaskPriority
   status: TaskStatus
   description?: string
@@ -61,6 +79,15 @@ export interface Task {
   reject_reason?: string
   created_at: string
   updated_at: string
+}
+
+export interface TaskCategory {
+  id: string
+  name: string
+  sort_order: number
+  enabled: boolean
+  is_system?: boolean
+  created_at: string
 }
 
 export type RecordAction =
@@ -96,6 +123,7 @@ export interface StageConfig {
   name: string
   enabled: boolean
   sort_order: number
+  is_repeatable?: boolean
 }
 
 export interface TaskTemplate {

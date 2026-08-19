@@ -24,7 +24,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
-import { ROLE_LABELS } from '@/lib/settings'
+import { ROLE_LABELS, JOB_TITLE_PRESETS } from '@/lib/settings'
+import { canManageUsers, canEditJobTitle } from '@/lib/permissions'
 import { formatDateTime } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types'
 
@@ -35,8 +36,9 @@ interface ProfileRow extends Profile {
 export default function UsersPage() {
   const profile = useAuthStore((s) => s.profile)
   const qc = useQueryClient()
+  const isAdmin = canManageUsers(profile?.role)
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' as UserRole })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' as UserRole, job_title: '' })
   const [submitting, setSubmitting] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -60,6 +62,18 @@ export default function UsersPage() {
     onError: (e: any) => toast.error(e?.message || '更新失败')
   })
 
+  const updateJobTitleMutation = useMutation({
+    mutationFn: async ({ id, job_title }: { id: string; job_title: string }) => {
+      const { error } = await supabase.from('profiles').update({ job_title }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('身份卡已更新')
+      qc.invalidateQueries({ queryKey: ['users-list'] })
+    },
+    onError: (e: any) => toast.error(e?.message || '更新失败')
+  })
+
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim() || !form.email.trim() || form.password.length < 6) {
@@ -78,12 +92,14 @@ export default function UsersPage() {
       if (error) throw error
       if (!data.user) throw new Error('创建失败')
 
-      // 更新角色
+      // 更新角色和身份卡
+      const updateData: any = { role: form.role }
+      if (form.job_title) updateData.job_title = form.job_title
       const { error: roleErr } = await supabase
         .from('profiles')
-        .update({ role: form.role })
+        .update(updateData)
         .eq('id', data.user.id)
-      if (roleErr) console.warn('角色更新失败，可在列表中手动设置', roleErr)
+      if (roleErr) console.warn('角色/身份卡更新失败，可在列表中手动设置', roleErr)
 
       // 登出刚刚创建的临时会话，恢复当前用户
       await supabase.auth.signOut()
@@ -92,7 +108,7 @@ export default function UsersPage() {
       setTimeout(() => window.location.reload(), 1200)
 
       setInviteOpen(false)
-      setForm({ name: '', email: '', password: '', role: 'staff' })
+      setForm({ name: '', email: '', password: '', role: 'staff', job_title: '' })
     } catch (e: any) {
       toast.error(e?.message || '创建失败')
     } finally {
@@ -111,7 +127,7 @@ export default function UsersPage() {
         </div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" />新增员工账号</Button>
+            {isAdmin && <Button className="gap-2"><Plus className="h-4 w-4" />新增员工账号</Button>}
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -141,6 +157,17 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>身份卡</Label>
+                <Select value={form.job_title} onValueChange={(v) => setForm({ ...form, job_title: v })}>
+                  <SelectTrigger><SelectValue placeholder="选择身份卡（可选）" /></SelectTrigger>
+                  <SelectContent>
+                    {JOB_TITLE_PRESETS.map((jt) => (
+                      <SelectItem key={jt} value={jt}>{jt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>取消</Button>
                 <Button type="submit" disabled={submitting}>{submitting ? '创建中...' : '创建账号'}</Button>
@@ -165,16 +192,17 @@ export default function UsersPage() {
                 <TableHead>姓名</TableHead>
                 <TableHead>邮箱</TableHead>
                 <TableHead>角色</TableHead>
+                <TableHead>身份卡</TableHead>
                 <TableHead>创建时间</TableHead>
                 <TableHead className="w-40 text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">加载中...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">加载中...</TableCell></TableRow>
               )}
               {!isLoading && data?.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">暂无账号</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">暂无账号</TableCell></TableRow>
               )}
               {data?.map((p) => {
                 const isSelf = p.id === profile?.id
@@ -193,7 +221,7 @@ export default function UsersPage() {
                     <TableCell>
                       <Select
                         defaultValue={p.role}
-                        disabled={isSelf}
+                        disabled={isSelf || !isAdmin}
                         onValueChange={(v: UserRole) => updateRoleMutation.mutate({ id: p.id, role: v })}
                       >
                         <SelectTrigger className="w-28 h-8 text-xs">
@@ -206,9 +234,25 @@ export default function UsersPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      <Select
+                        defaultValue={p.job_title || ''}
+                        disabled={isSelf || !canEditJobTitle(profile?.role, p.role)}
+                        onValueChange={(v) => updateJobTitleMutation.mutate({ id: p.id, job_title: v })}
+                      >
+                        <SelectTrigger className="w-24 h-8 text-xs">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {JOB_TITLE_PRESETS.map((jt) => (
+                            <SelectItem key={jt} value={jt}>{jt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-xs">{formatDateTime(p.created_at)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-red-500 gap-1" disabled={isSelf}>
+                      <Button variant="ghost" size="sm" className="text-red-500 gap-1" disabled={isSelf || !isAdmin}>
                         <UserX className="h-3.5 w-3.5" />
                         停用
                       </Button>

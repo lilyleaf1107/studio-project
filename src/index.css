@@ -8,6 +8,8 @@
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
     --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
@@ -22,6 +24,50 @@
     --input: 214 32% 91%;
     --ring: 221 83% 53%;
     --radius: 0.75rem;
+    --sidebar-bg: #334155;
+    --sidebar-active: #14b8a6;
+    --sidebar-text: #e2e8f0;
+    --sidebar-hover: rgba(148, 163, 184, 0.25);
+  }
+
+  /* 主题：蓝白 */
+  [data-theme="blue"] {
+    --primary: 221 83% 53%;
+    --accent: 221 83% 53%;
+    --sidebar-bg: #3b5778;
+    --sidebar-active: #3b82f6;
+    --sidebar-text: #dbeafe;
+    --sidebar-hover: rgba(96, 165, 250, 0.2);
+  }
+
+  /* 主题：红白 */
+  [data-theme="red"] {
+    --primary: 0 72% 51%;
+    --accent: 0 72% 51%;
+    --sidebar-bg: #8b4a4a;
+    --sidebar-active: #ef4444;
+    --sidebar-text: #fee2e2;
+    --sidebar-hover: rgba(248, 113, 113, 0.2);
+  }
+
+  /* 主题：绿白 */
+  [data-theme="green"] {
+    --primary: 142 71% 45%;
+    --accent: 142 71% 45%;
+    --sidebar-bg: #4a6b50;
+    --sidebar-active: #22c55e;
+    --sidebar-text: #dcfce7;
+    --sidebar-hover: rgba(74, 222, 128, 0.2);
+  }
+
+  /* 主题：紫白 */
+  [data-theme="purple"] {
+    --primary: 262 83% 58%;
+    --accent: 262 83% 58%;
+    --sidebar-bg: #6b5188;
+    --sidebar-active: #a855f7;
+    --sidebar-text: #f3e8ff;
+    --sidebar-hover: rgba(192, 132, 252, 0.2);
   }
 }
 

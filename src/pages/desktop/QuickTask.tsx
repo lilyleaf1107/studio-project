@@ -32,29 +32,34 @@ import { cn, todayEndOfDay, addDaysISO, formatDate } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import type { TaskType, TaskPriority } from '@/types'
 
-type Tab = 'temporary' | 'shortterm' | 'longterm'
+type Tab = TaskType
 
 const tabMeta: Record<Tab, { label: string; desc: string; color: string }> = {
-  temporary: {
-    label: '临时普通任务',
-    desc: '当天要完成的事，如拍摄、上架、整理资料。步骤最少。',
-    color: 'bg-pink-50 text-pink-700 ring-pink-200'
+  anytime: {
+    label: '随时进行',
+    desc: '没有固定截止日期，有空就做的任务。',
+    color: 'bg-slate-50 text-slate-700 ring-slate-200'
   },
-  shortterm: {
-    label: '短线设计任务',
-    desc: '几天到一个月完成，如画图、设计、测试、短周期交付。',
+  normal: {
+    label: '普通任务',
+    desc: '当天或短期要完成的事，如拍摄、上架、整理资料。步骤最少。',
     color: 'bg-teal-50 text-teal-700 ring-teal-200'
   },
   longterm: {
-    label: '长线项目任务',
-    desc: '从大项目/小项目里选择，系统自动关联和生成名称。',
+    label: '长线任务',
+    desc: '关联大项目/小项目，或按模板计算截止日期的任务。',
     color: 'bg-indigo-50 text-indigo-700 ring-indigo-200'
+  },
+  recurring: {
+    label: '循环任务',
+    desc: '周期性重复的任务，暂不设置具体截止日期。',
+    color: 'bg-purple-50 text-purple-700 ring-purple-200'
   }
 }
 
 export default function QuickTask() {
   const profile = useAuthStore((s) => s.profile)
-  const [tab, setTab] = useState<Tab>('temporary')
+  const [tab, setTab] = useState<Tab>('normal')
   const { data: profiles, isLoading: usersLoading } = useProfiles()
   const { data: bigProjects } = useBigProjects()
   const { data: allSubs } = useSubProjects()
@@ -74,6 +79,14 @@ export default function QuickTask() {
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
+  const [recurrenceRule, setRecurrenceRule] = useState<string>('')
+
+  const RECURRENCE_OPTIONS: { label: string; value: string }[] = [
+    { label: '每天', value: '{"type":"daily"}' },
+    { label: '每周一', value: '{"type":"weekly","weekday":1}' },
+    { label: '每月1日', value: '{"type":"monthly","day":1}' },
+    { label: '每隔7天', value: '{"type":"custom","interval_days":7}' }
+  ]
 
   const subOptions = useMemo(
     () => (bigId ? allSubs?.filter((s) => s.big_project_id === bigId) : allSubs) || [],
@@ -100,12 +113,14 @@ export default function QuickTask() {
 
   // 自动选截止日期
   useMemo(() => {
-    if (tab === 'temporary') {
-      setDue(formatDate(new Date()))
-    } else if (tab === 'shortterm' && selTemplate?.default_due_days) {
+    if (tab === 'longterm' && selTemplate?.default_due_days) {
       const d = new Date()
       d.setDate(d.getDate() + selTemplate.default_due_days)
       setDue(formatDate(d))
+    } else if (tab === 'normal') {
+      setDue(formatDate(new Date()))
+    } else if (tab === 'anytime' || tab === 'recurring') {
+      setDue('')
     }
   }, [tab, selTemplate?.default_due_days])
 
@@ -119,11 +134,12 @@ export default function QuickTask() {
       toast.error('请补充任务名或选择类型')
       return
     }
-    if (!due) {
+    if (tab !== 'anytime' && tab !== 'recurring' && !due) {
       toast.error('请选择截止日期')
       return
     }
-    const dueIso = new Date(due + 'T23:59:59').toISOString()
+    const dueIso = due ? new Date(due + 'T23:59:59').toISOString() : undefined
+    const startDateIso = tab === 'recurring' ? new Date().toISOString() : undefined
     try {
       const task = await createMutation.mutateAsync({
         name: finalName,
@@ -134,8 +150,10 @@ export default function QuickTask() {
         stage: stage || undefined,
         assignee_id: assignee,
         due_date: dueIso,
+        start_date: startDateIso,
         priority,
-        description: note.trim() || undefined
+        description: note.trim() || undefined,
+        recurrence_rule: tab === 'recurring' && recurrenceRule ? recurrenceRule : undefined
       })
       const assigneeName = profiles?.find((p) => p.id === assignee)?.name
       await createRecord.mutateAsync({
@@ -173,7 +191,7 @@ export default function QuickTask() {
       {/* 任务类型 Tab */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {(Object.keys(tabMeta) as Tab[]).map((t) => {
               const m = tabMeta[t]
               const active = tab === t
@@ -251,12 +269,12 @@ export default function QuickTask() {
         </CardContent>
       </Card>
 
-      {/* 关联项目（长线/短线可选） */}
-      {tab !== 'temporary' && (
+      {/* 关联项目（除了随时进行都可选） */}
+      {tab !== 'anytime' && tab !== 'recurring' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">2. 关联项目（可选）</CardTitle>
-            <CardDescription className="text-xs">长线任务建议关联小项目；短线任务可不关联。</CardDescription>
+            <CardDescription className="text-xs">长线任务建议关联小项目；普通任务可不关联。</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -306,7 +324,9 @@ export default function QuickTask() {
       {/* 分配人和截止 */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">{tab === 'temporary' ? '2. 分配与截止' : '3. 分配与截止'}</CardTitle>
+          <CardTitle className="text-base">
+            {(tab === 'anytime' || tab === 'recurring') ? '2. 分配与截止' : (tab === 'longterm' || tab === 'normal' ? '3. 分配与截止' : '2. 分配与截止')}
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
@@ -326,9 +346,22 @@ export default function QuickTask() {
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              截止日期 <span className="text-red-500">*</span>
+              截止日期 {tab !== 'anytime' && tab !== 'recurring' && <span className="text-red-500">*</span>}
             </Label>
-            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} disabled={tab === 'anytime' || tab === 'recurring'} />
+            {tab === 'recurring' && (
+              <div className="pt-2 space-y-1.5">
+                <Label className="text-xs text-muted-foreground">重复规则</Label>
+                <Select value={recurrenceRule} onValueChange={setRecurrenceRule}>
+                  <SelectTrigger><SelectValue placeholder="选择重复周期（可选）" /></SelectTrigger>
+                  <SelectContent>
+                    {RECURRENCE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">优先级</Label>

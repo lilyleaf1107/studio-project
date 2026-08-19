@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -15,8 +16,10 @@ import {
   Flag,
   XCircle,
   Send,
-  History
+  History,
+  Trash2
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -26,10 +29,11 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog'
 import Loading from '@/components/Loading'
-import { useTask, useUpdateTaskStatus } from '@/hooks/useTasks'
+import { useTask, useUpdateTaskStatus, useUpdateTaskPriority } from '@/hooks/useTasks'
 import { useBigProject } from '@/hooks/useProjects'
 import { useSubProject } from '@/hooks/useSubProjects'
 import { useProfiles } from '@/hooks/useProfiles'
@@ -39,11 +43,15 @@ import {
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
   PRIORITY_LABELS,
+  PRIORITY_FLAGS,
   TASK_CATEGORIES,
 } from '@/lib/settings'
-import { canReviewTask } from '@/lib/permissions'
-import { cn, formatDate, formatDateTime, isOverdue } from '@/lib/utils'
+import { canReviewTask, canAdjustPriority } from '@/lib/permissions'
+import { cn, formatDate, formatDateTime, isOverdue, getCountdown } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
+import type { TaskPriority } from '@/types'
+
+const PRIORITY_CYCLE: TaskPriority[] = ['low', 'medium', 'high']
 
 export default function TaskDetail() {
   const { id } = useParams()
@@ -55,16 +63,27 @@ export default function TaskDetail() {
   const { data: profiles } = useProfiles()
   const stageName = useStageName(task?.stage)
   const updateStatus = useUpdateTaskStatus()
+  const updatePriority = useUpdateTaskPriority()
   const createRecord = useCreateWorkRecord()
+  const qc = useQueryClient()
   const { data: records } = useWorkRecords(id ? { task_id: id } : undefined)
 
   const isAssigned = profile?.id === task?.assignee_id
   const canReview = canReviewTask(profile?.role)
+  const canEditPriority = canAdjustPriority(profile?.role)
   const overdue = task && task.status !== 'done' && isOverdue(task.due_date)
+
+  function cyclePriority(current: TaskPriority) {
+    if (!id) return
+    const idx = PRIORITY_CYCLE.indexOf(current)
+    const next = PRIORITY_CYCLE[(idx + 1) % PRIORITY_CYCLE.length]
+    updatePriority.mutate({ id, priority: next })
+  }
 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [delayOpen, setDelayOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [note, setNote] = useState('')
 
   const profileMap: Record<string, string> = {}
@@ -200,6 +219,22 @@ export default function TaskDetail() {
     }
   }
 
+  async function handleDeleteTask() {
+    if (!id) return
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', id)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['tasks'], exact: false })
+      qc.invalidateQueries({ queryKey: ['task'], exact: false })
+      qc.invalidateQueries({ queryKey: ['big-projects'], exact: false })
+      toast.success('任务已删除')
+      setDeleteOpen(false)
+      navigate('/tasks')
+    } catch (e: any) {
+      toast.error(e?.message || '删除失败')
+    }
+  }
+
   if (isLoading) return <Loading />
   if (!task) {
     return (
@@ -226,30 +261,68 @@ export default function TaskDetail() {
       </div>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight">{task.name}</h1>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className={cn(
-              'text-xs px-2.5 py-1 rounded-full font-medium',
-              overdue && task.status !== 'done' && task.status !== 'delayed'
-                ? 'bg-red-50 text-red-700'
-                : statusMeta.color
-            )}>
-              {overdue && task.status !== 'done' && task.status !== 'delayed' ? '已逾期' : statusMeta.label}
-            </span>
-            <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', typeMeta.color)}>
-              {typeMeta.label}
-            </span>
-            {categoryName && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground">
-                {categoryName}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-3">
+            {canEditPriority ? (
+              <button
+                onClick={() => cyclePriority(task.priority)}
+                className="shrink-0 text-3xl leading-none hover:scale-110 transition-transform cursor-pointer pt-0.5"
+                title={`点击切换优先级：${priMeta.label}（低→中→高→低）`}
+              >
+                {PRIORITY_FLAGS[task.priority]}
+              </button>
+            ) : (
+              <span className="shrink-0 text-3xl leading-none pt-0.5">
+                {PRIORITY_FLAGS[task.priority]}
               </span>
             )}
-            <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', priMeta.color)}>
-              优先级：{priMeta.label}
-            </span>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold tracking-tight">{task.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className={cn(
+                  'text-xs px-2.5 py-1 rounded-full font-medium',
+                  overdue && task.status !== 'done' && task.status !== 'delayed'
+                    ? 'bg-red-50 text-red-700'
+                    : statusMeta.color
+                )}>
+                  {overdue && task.status !== 'done' && task.status !== 'delayed' ? '已逾期' : statusMeta.label}
+                </span>
+                <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', typeMeta.color)}>
+                  {typeMeta.label}
+                </span>
+                {categoryName && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground">
+                    {categoryName}
+                  </span>
+                )}
+                <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', priMeta.color)}>
+                  优先级：{priMeta.label}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+        {canReview && (
+          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" size="icon" title="删除任务" className="shrink-0">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>删除任务</DialogTitle>
+              </DialogHeader>
+              <div className="text-sm text-muted-foreground py-2">
+                确定要删除任务「{task.name}」吗？该任务及其所有工作记录都会被移除，且操作不可恢复。
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteOpen(false)}>取消</Button>
+                <Button variant="destructive" onClick={handleDeleteTask}>确认删除</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -274,7 +347,16 @@ export default function TaskDetail() {
             <div className={cn('font-medium text-lg', overdue && 'text-red-600')}>
               {formatDate(task.due_date)}
             </div>
-            {overdue && <div className="text-xs text-red-500 mt-0.5">已经超过截止时间</div>}
+            {(() => {
+              const countdown = getCountdown(task.due_date, task.start_date)
+              if (!countdown) return null
+              const isOverdueFlag = countdown.startsWith('🔥')
+              return (
+                <div className={cn('text-xs mt-0.5', isOverdueFlag ? 'text-red-500 font-medium' : 'text-muted-foreground')}>
+                  {countdown}
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
         <Card>

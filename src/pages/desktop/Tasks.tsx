@@ -13,25 +13,37 @@ import {
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import Loading from '@/components/Loading'
-import { useTasks } from '@/hooks/useTasks'
+import { useTasks, useUpdateTaskPriority } from '@/hooks/useTasks'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useBigProjects } from '@/hooks/useProjects'
 import {
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
   PRIORITY_LABELS,
+  PRIORITY_FLAGS,
   TASK_CATEGORIES
 } from '@/lib/settings'
-import { canViewAllProjects } from '@/lib/permissions'
-import { cn, formatDate, isOverdue } from '@/lib/utils'
+import { canViewAllProjects, canAdjustPriority } from '@/lib/permissions'
+import { cn, formatDate, isOverdue, getCountdown } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
-import type { TaskStatus, TaskType } from '@/types'
+import type { TaskStatus, TaskType, TaskPriority } from '@/types'
+
+const PRIORITY_CYCLE: TaskPriority[] = ['low', 'medium', 'high']
 
 export default function Tasks() {
   const profile = useAuthStore((s) => s.profile)
   const canAll = canViewAllProjects(profile?.role)
+  const canEditPriority = canAdjustPriority(profile?.role)
   const userId = profile?.id
   const navigate = useNavigate()
+  const updatePriority = useUpdateTaskPriority()
+
+  function cyclePriority(id: string, current: TaskPriority, e: React.MouseEvent) {
+    e.stopPropagation()
+    const idx = PRIORITY_CYCLE.indexOf(current)
+    const next = PRIORITY_CYCLE[(idx + 1) % PRIORITY_CYCLE.length]
+    updatePriority.mutate({ id, priority: next })
+  }
 
   const [statusF, setStatusF] = useState<string>('all')
   const [typeF, setTypeF] = useState<string>('all')
@@ -159,6 +171,8 @@ export default function Tasks() {
                 const priMeta = PRIORITY_LABELS[t.priority]
                 const overdue =
                   t.status !== 'done' && t.status !== 'delayed' && isOverdue(t.due_date)
+                const countdown = getCountdown(t.due_date, t.start_date)
+                const isOverdueFlag = countdown.startsWith('🔥')
                 return (
                   <TableRow
                     key={t.id}
@@ -166,18 +180,35 @@ export default function Tasks() {
                     onClick={() => navigate(`/tasks/${t.id}`)}
                   >
                     <TableCell className="min-w-0">
-                      <div className="font-medium truncate pr-2">{t.name}</div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {t.task_category && (
-                          <span className="text-[11px] text-muted-foreground">
-                            {categoryMap[t.task_category] || t.task_category}
+                      <div className="flex items-start gap-2 min-w-0">
+                        {canEditPriority ? (
+                          <button
+                            onClick={(e) => cyclePriority(t.id, t.priority, e)}
+                            className="shrink-0 text-base leading-none hover:scale-110 transition-transform cursor-pointer pt-0.5"
+                            title={`点击切换优先级：${priMeta.label}`}
+                          >
+                            {PRIORITY_FLAGS[t.priority]}
+                          </button>
+                        ) : (
+                          <span className="shrink-0 text-base leading-none pt-0.5">
+                            {PRIORITY_FLAGS[t.priority]}
                           </span>
                         )}
-                        {t.big_project_id && bpMap[t.big_project_id] && (
-                          <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">
-                            · {bpMap[t.big_project_id]}
-                          </span>
-                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate pr-2">{t.name}</div>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {t.task_category && (
+                              <span className="text-[11px] text-muted-foreground">
+                                {categoryMap[t.task_category] || t.task_category}
+                              </span>
+                            )}
+                            {t.big_project_id && bpMap[t.big_project_id] && (
+                              <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                                · {bpMap[t.big_project_id]}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
@@ -200,7 +231,11 @@ export default function Tasks() {
                       <div className={cn(overdue && 'text-red-600 font-medium')}>
                         {formatDate(t.due_date)}
                       </div>
-                      {overdue && <div className="text-[11px] text-red-500">已逾期</div>}
+                      {countdown && (
+                        <div className={cn('text-[11px]', isOverdueFlag ? 'text-red-500 font-medium' : 'text-muted-foreground')}>
+                          {countdown}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className={cn(
