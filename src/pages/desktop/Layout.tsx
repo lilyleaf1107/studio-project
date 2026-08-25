@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -9,9 +9,7 @@ import {
   Users,
   Settings,
   LogOut,
-  Sparkles,
-  Calendar,
-  ListTodo,
+  CalendarDays,
   type LucideIcon
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
@@ -26,12 +24,10 @@ import WorkRecords from './WorkRecords'
 import Stats from './Stats'
 import UsersPage from './Users'
 import SettingsPage from './Settings'
-import QuickTask from './QuickTask'
+import SchedulePage from './Schedule'
 import ProjectDetail from './ProjectDetail'
 import TaskDetail from './TaskDetail'
 import SubProjectDetail from './SubProjectDetail'
-import CalendarPage from './Calendar'
-import TodayPage from './Today'
 import { canManageSystem, canManageUsers, canViewAllProjects } from '@/lib/permissions'
 
 type MenuItem = {
@@ -45,19 +41,17 @@ type MenuItem = {
 const ORDER_KEY = 'sidebar-order'
 
 const DEFAULT_MAIN_MENU: MenuItem[] = [
-  { to: '/', label: '首页', icon: LayoutDashboard, roles: ['owner', 'admin', 'staff'], group: 'main' },
-  { to: '/projects', label: '项目', icon: FolderKanban, roles: ['owner', 'admin', 'staff'], group: 'main' },
-  { to: '/tasks', label: '任务中心', icon: CheckSquare, roles: ['owner', 'admin', 'staff'], group: 'main' },
-  { to: '/calendar', label: '日历', icon: Calendar, roles: ['owner', 'admin', 'staff'], group: 'main' },
-  { to: '/today', label: '每日待办', icon: ListTodo, roles: ['owner', 'admin', 'staff'], group: 'main' },
-  { to: '/records', label: '工作记录', icon: History, roles: ['owner', 'admin', 'staff'], group: 'main' },
-  { to: '/quick-task', label: '快速建任务', icon: Sparkles, roles: ['owner', 'admin'], group: 'main' }
+  { to: '/', label: '首页', icon: LayoutDashboard, roles: ['owner', 'admin', 'partner', 'staff'], group: 'main' },
+  { to: '/projects', label: '项目', icon: FolderKanban, roles: ['owner', 'admin', 'partner', 'staff'], group: 'main' },
+  { to: '/tasks', label: '任务中心', icon: CheckSquare, roles: ['owner', 'admin', 'partner', 'staff'], group: 'main' },
+  { to: '/schedule', label: '日程', icon: CalendarDays, roles: ['owner', 'admin', 'partner', 'staff'], group: 'main' },
+  { to: '/records', label: '工作记录', icon: History, roles: ['owner', 'admin', 'partner', 'staff'], group: 'main' }
 ]
 
 const DEFAULT_ADMIN_MENU: MenuItem[] = [
   { to: '/stats', label: '数据统计', icon: BarChart3, roles: ['owner', 'admin'], group: 'admin' },
   { to: '/users', label: '账号管理', icon: Users, roles: ['admin', 'owner'], group: 'admin' },
-  { to: '/settings', label: '系统设置', icon: Settings, roles: ['admin'], group: 'admin' }
+  { to: '/settings', label: '系统设置', icon: Settings, roles: ['admin', 'owner', 'partner', 'staff'], group: 'admin' }
 ]
 
 function loadOrder(): Record<string, string[]> | null {
@@ -281,7 +275,7 @@ export default function DesktopLayout() {
               {profile?.name?.slice(0, 1) || 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate text-white">{profile?.name || '未命名'}</div>
+              <div className="text-sm font-semibold truncate text-white">{profile?.name || '未设置昵称'}</div>
               <div className="text-xs text-slate-400">
                 {profile?.role ? ROLE_LABELS[profile.role] : ''}
               </div>
@@ -313,9 +307,7 @@ export default function DesktopLayout() {
             <Route path="sub-projects/:id" element={<SubProjectDetail />} />
             <Route path="tasks" element={<Tasks />} />
             <Route path="tasks/:id" element={<TaskDetail />} />
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="today" element={<TodayPage />} />
-            <Route path="quick-task" element={<QuickTask />} />
+            <Route path="schedule" element={<SchedulePage />} />
             <Route path="records" element={<WorkRecords />} />
             <Route path="stats" element={<Stats />} />
             <Route path="users" element={<UsersPage />} />

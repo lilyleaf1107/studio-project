@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ListTodo, Plus, Clock, Flag, ChevronRight } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Loading from '@/components/Loading'
 import { useTasks } from '@/hooks/useTasks'
@@ -16,7 +16,7 @@ function formatDateCN(d: Date): string {
   const y = d.getFullYear()
   const m = d.getMonth() + 1
   const day = d.getDate()
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   const w = weekdays[d.getDay()]
   return `${y}年${m}月${day}日 ${w}`
 }
@@ -40,14 +40,12 @@ function getCountdown(due?: string): string {
   const diff = endOfDay.getTime() - now.getTime()
   if (diff <= 0) return '已逾期'
   const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   if (hours >= 24) {
     const days = Math.floor(hours / 24)
     return `还剩 ${days} 天`
   }
-  if (hours > 0) {
-    return `还剩 ${hours} 小时 ${minutes} 分`
-  }
+  if (hours > 0) return `还剩 ${hours} 小时`
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   return `还剩 ${minutes} 分钟`
 }
 
@@ -59,11 +57,7 @@ const FILTER_OPTIONS: { key: FilterKey; label: string; statuses: TaskStatus[] }[
   { key: 'done', label: '已完成', statuses: ['done'] }
 ]
 
-const PRIORITY_ORDER: Record<string, number> = {
-  high: 0,
-  medium: 1,
-  low: 2
-}
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 export default function TodayPage() {
   const navigate = useNavigate()
@@ -102,7 +96,7 @@ export default function TodayPage() {
     )
   }, [tasks, filter, today])
 
-  const section4 = useMemo(() => {
+  const section3 = useMemo(() => {
     if (!tasks || !userId) return []
     return filterByStatus(
       sortByPriority(
@@ -112,66 +106,59 @@ export default function TodayPage() {
   }, [tasks, filter, userId])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ListTodo className="h-6 w-6 text-teal-600" />
-            今日待办
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <ListTodo className="h-5 w-5 text-primary" />今日待办
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{formatDateCN(today)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{formatDateCN(today)}</p>
         </div>
-        <Button onClick={() => navigate('/quick-task')}>
+        <Button size="sm" onClick={() => navigate('/quick-task')}>
           <Plus className="h-4 w-4" />
-          快速建任务
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-3 flex flex-wrap items-center gap-2">
-          {FILTER_OPTIONS.map((f) => (
-            <Button
-              key={f.key}
-              variant={filter === f.key ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter(f.key)}
-              className="gap-1.5"
-            >
-              {f.label}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
+      {/* 筛选 */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {FILTER_OPTIONS.map((f) => (
+          <Button
+            key={f.key}
+            variant={filter === f.key ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter(f.key)}
+            className="gap-1 shrink-0 h-8 text-xs"
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
 
       {isLoading ? (
-        <Card>
-          <Loading />
-        </Card>
+        <Loading />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <TaskSection
-            title="🚩 红旗进行中任务"
-            description="高优先级且正在进行的任务"
+            title="🚩 红旗进行中"
+            description="高优先级进行中"
             accent="red"
             tasks={section1}
             onTaskClick={(id) => navigate(`/tasks/${id}`)}
             showCountdown={false}
           />
-
           <TaskSection
-            title="⏰ 今日到期任务"
-            description="今天截止但尚未完成的任务"
+            title="⏰ 今日到期"
+            description="今天截止未完成"
             accent="amber"
             tasks={section2}
             onTaskClick={(id) => navigate(`/tasks/${id}`)}
             showCountdown={true}
           />
-
           <TaskSection
-            title="🔵 随时进行任务"
-            description="没有截止日期、随时可以处理的任务"
+            title="🔵 随时进行"
+            description="无截止随时处理"
             accent="slate"
-            tasks={section4}
+            tasks={section3}
             onTaskClick={(id) => navigate(`/tasks/${id}`)}
             showCountdown={false}
           />
@@ -197,42 +184,38 @@ function TaskItem({
   return (
     <div
       onClick={() => onClick(task.id)}
-      className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+      className="flex items-start gap-2 p-2.5 rounded-lg border active:bg-muted/40 cursor-pointer transition-colors"
     >
       <div className="flex items-center gap-1 pt-0.5 shrink-0">
         <Flag className={cn(
-          'h-4 w-4',
+          'h-3.5 w-3.5',
           task.priority === 'high' && 'text-red-500',
           task.priority === 'medium' && 'text-amber-500',
           task.priority === 'low' && 'text-slate-400'
         )} />
-        <span className="text-sm">{PRIORITY_FLAGS[task.priority]?.replace(/[^🚩🏁🔵]/g, '') || ''}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className={cn(
-              'font-medium text-slate-800 truncate',
-              overdue && 'text-red-600'
-            )}>
+            <div className={cn('font-medium text-sm truncate', overdue && 'text-red-600')}>
               {task.name}
             </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <span className={cn(
-                'text-[11px] px-2 py-0.5 rounded-full font-medium',
+                'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
                 overdue && task.status !== 'delayed' ? 'bg-red-50 text-red-700' : statusMeta.color
               )}>
                 {overdue && task.status !== 'delayed' ? '已逾期' : statusMeta.label}
               </span>
               {task.due_date && (
-                <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                  <Clock className="h-2.5 w-2.5" />
                   {formatDate(task.due_date)}
                 </span>
               )}
               {showCountdown && countdown && (
                 <span className={cn(
-                  'text-[11px] px-2 py-0.5 rounded-full font-medium',
+                  'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
                   countdown === '已逾期' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'
                 )}>
                   {countdown}
@@ -240,7 +223,7 @@ function TaskItem({
               )}
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-400 shrink-0 mt-1" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
         </div>
       </div>
     </div>
@@ -271,27 +254,16 @@ function TaskSection({
 
   return (
     <Card className={cn('border-l-4', accentStyles[accent])}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            <div className="text-xs text-slate-500 mt-1">
-              {description}（{tasks.length}）
-            </div>
-          </div>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="font-medium text-sm">{title}</div>
+          <span className="text-[10px] text-muted-foreground">{tasks.length}</span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
         {tasks.length === 0 ? (
-          <div className="text-sm text-slate-400 py-6 text-center">暂无任务</div>
+          <div className="text-xs text-muted-foreground py-4 text-center">暂无任务</div>
         ) : (
           tasks.map((t) => (
-            <TaskItem
-              key={t.id}
-              task={t}
-              onClick={onTaskClick}
-              showCountdown={showCountdown}
-            />
+            <TaskItem key={t.id} task={t} onClick={onTaskClick} showCountdown={showCountdown} />
           ))
         )}
       </CardContent>

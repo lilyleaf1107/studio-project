@@ -1,7 +1,7 @@
-/**
- * admin=管理员最高 | owner=老板 | staff=员工
+﻿/**
+ * admin=经理(最高) | owner=老板 | partner=伙伴 | staff=员工
  */
-export type UserRole = 'owner' | 'admin' | 'staff'
+export type UserRole = 'owner' | 'admin' | 'partner' | 'staff'
 
 export interface Profile {
   id: string
@@ -115,6 +115,20 @@ export interface WorkRecord {
   action: RecordAction
   content: string
   attachment_path?: string
+}
+
+// 个人日程事件（由 personal_todos 扩充而来）
+export interface PersonalEvent {
+  id: string
+  user_id: string
+  title: string
+  done: boolean
+  created_at: string
+  event_date?: string
+  start_time?: string
+  end_time?: string
+  recurrence_rule?: string
+  color?: string
 }
 
 export interface StageConfig {

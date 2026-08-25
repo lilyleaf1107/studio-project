@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -30,6 +30,7 @@ import { PROJECT_STATUS_LABELS, DEFAULT_STAGES } from '@/lib/settings'
 import { canCreateProject } from '@/lib/permissions'
 import { cn, formatDate } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
+import QuickTaskDialog from './QuickTask'
 import type { SubProjectStatus } from '@/types'
 
 export default function SubProjectDetail() {
@@ -237,9 +238,17 @@ export default function SubProjectDetail() {
             任务列表
             <span className="text-xs text-muted-foreground font-normal ml-2">（第 3 步开发任务功能）</span>
           </CardTitle>
-          <Button size="sm" variant="outline" className="gap-2" disabled>
-            <Plus className="h-4 w-4" />新增任务
-          </Button>
+<QuickTaskDialog
+  trigger={
+    <Button size="sm" variant="outline" className="gap-2">
+      <Plus className="h-4 w-4" />新增任务
+    </Button>
+  }
+  presetBigProjectId={sp.big_project_id}
+  presetSubProjectId={sp.id}
+  presetStage={sp.stage}
+  lockProject={true}
+/>
         </CardHeader>
         <CardContent className="p-8 text-center text-sm text-muted-foreground">
           下一个步骤会在这里显示该小项目下的所有任务，以及每个任务的负责人、状态和进度。

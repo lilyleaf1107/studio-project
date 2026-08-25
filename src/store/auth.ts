@@ -11,6 +11,7 @@ interface AuthState {
   register: (name: string, identifier: string, password: string, usePhone?: boolean) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
+  updateProfile: (data: { name?: string; job_title?: string }) => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -81,6 +82,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (data) {
       set({ profile: { ...data, email: user.email } as Profile })
     }
+  },
+
+  async updateProfile(data: { name?: string; job_title?: string }) {
+    const user = get().user
+    if (!user) return
+    const { error } = await supabase
+      .from('profiles')
+      .update(data)
+      .eq('id', user.id)
+    if (error) throw error
+    await get().refreshProfile()
   }
 }))
 

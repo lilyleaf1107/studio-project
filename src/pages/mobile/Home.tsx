@@ -5,17 +5,15 @@ import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/auth'
 import { ROLE_LABELS, TASK_STATUS_LABELS, TASK_TYPE_LABELS, PRIORITY_LABELS, PRIORITY_FLAGS } from '@/lib/settings'
 import { useTasks } from '@/hooks/useTasks'
-import { useWorkRecords, RECORD_ACTION_LABELS, RECORD_ACTION_COLORS } from '@/hooks/useWorkRecords'
 import { useProfiles } from '@/hooks/useProfiles'
-import { cn, formatDate, formatDateTime, isOverdue } from '@/lib/utils'
+import { cn, formatDate, isOverdue } from '@/lib/utils'
 import Loading from '@/components/Loading'
 import {
   CheckSquare,
   Clock,
   CheckCircle2,
   AlertCircle,
-  ChevronRight,
-  History
+  ChevronRight
 } from 'lucide-react'
 
 export default function Home() {
@@ -28,7 +26,6 @@ export default function Home() {
 
   const filters = useMemo(() => userId ? { assignee_id: userId } : undefined, [userId])
   const { data: myTasks, isLoading: tasksLoading } = useTasks(filters)
-  const { data: recentRecords } = useWorkRecords({ operator_id: userId, limit: 5 })
 
   const today = formatDate(new Date())
 
@@ -140,45 +137,6 @@ export default function Home() {
                       </span>
                     </div>
                   </button>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 最近记录 */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="font-medium text-sm flex items-center gap-1.5">
-              <History className="h-4 w-4 text-muted-foreground" />
-              我的最近动态
-            </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => navigate('/records')}>
-              全部 <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          {!recentRecords || recentRecords.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-4 text-center">
-              还没有操作记录
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentRecords.map((r) => {
-                const color = RECORD_ACTION_COLORS[r.action] || 'bg-slate-100 text-slate-700'
-                return (
-                  <div key={r.id} className="flex gap-3">
-                    <div className={cn('mt-0.5 shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium', color)}>
-                      {RECORD_ACTION_LABELS[r.action] || r.action}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs line-clamp-2">{r.content}</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
-                        {formatDateTime(r.created_at)}
-                      </div>
-                    </div>
-                  </div>
                 )
               })}
             </div>

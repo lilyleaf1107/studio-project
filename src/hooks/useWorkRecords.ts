@@ -37,7 +37,6 @@ export interface CreateRecordInput {
   task_id?: string
   attachment_path?: string
   operator_id?: string
-  operator_name?: string
 }
 
 export function useCreateWorkRecord() {
@@ -49,7 +48,6 @@ export function useCreateWorkRecord() {
         .from('work_records')
         .insert({
           operator_id: input.operator_id || profile?.id,
-          operator_name: input.operator_name || profile?.name,
           big_project_id: input.big_project_id,
           sub_project_id: input.sub_project_id,
           task_id: input.task_id,

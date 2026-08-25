@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 
 export interface ThemePreview {
   bg: string
@@ -6,7 +6,7 @@ export interface ThemePreview {
 }
 
 export interface ThemeOption {
-  key: 'default' | 'blue' | 'red' | 'green' | 'purple'
+  key: 'default' | 'blue' | 'green' | 'purple' | 'pink' | 'amber'
   name: string
   description: string
   preview: ThemePreview
@@ -15,33 +15,39 @@ export interface ThemeOption {
 export const THEMES: ThemeOption[] = [
   {
     key: 'default',
-    name: '默认（青色）',
-    description: '浅灰蓝侧栏 + 青色强调',
-    preview: { bg: '#334155', active: '#14b8a6' }
+    name: '默认（深石板）',
+    description: '深石板侧栏 + 雾蓝灰强调',
+    preview: { bg: '#1f2937', active: '#5b8def' }
   },
   {
     key: 'blue',
-    name: '蓝白',
-    description: '浅蓝侧栏 + 亮蓝强调',
-    preview: { bg: '#3b5778', active: '#3b82f6' }
-  },
-  {
-    key: 'red',
-    name: '红白',
-    description: '浅红侧栏 + 亮红强调',
-    preview: { bg: '#8b4a4a', active: '#ef4444' }
+    name: '雾蓝灰',
+    description: '雾蓝侧栏 + 灰蓝强调',
+    preview: { bg: '#e8edf2', active: '#7a93a8' }
   },
   {
     key: 'green',
-    name: '绿白',
-    description: '浅绿侧栏 + 亮绿强调',
-    preview: { bg: '#4a6b50', active: '#22c55e' }
+    name: '灰绿',
+    description: '灰绿侧栏 + 莫兰迪绿强调',
+    preview: { bg: '#e6ede9', active: '#7a9b8e' }
   },
   {
     key: 'purple',
-    name: '紫白',
-    description: '浅紫侧栏 + 亮紫强调',
-    preview: { bg: '#6b5188', active: '#a855f7' }
+    name: '雾紫灰',
+    description: '雾紫侧栏 + 灰紫强调',
+    preview: { bg: '#ebe8f0', active: '#9088a8' }
+  },
+  {
+    key: 'pink',
+    name: '藕粉灰',
+    description: '藕粉侧栏 + 灰粉强调',
+    preview: { bg: '#efe6e8', active: '#a88a93' }
+  },
+  {
+    key: 'amber',
+    name: '米灰',
+    description: '米灰侧栏 + 莫兰迪黄强调',
+    preview: { bg: '#efe9e0', active: '#a8957a' }
   }
 ]
 
@@ -65,7 +71,6 @@ export const useThemeStore = create<ThemeState>((set) => ({
     try {
       localStorage.setItem(STORAGE_KEY, key)
     } catch (e) {
-      // 忽略 localStorage 不可用情况
     }
     set({ theme: key })
   },
@@ -75,7 +80,6 @@ export const useThemeStore = create<ThemeState>((set) => ({
     try {
       saved = localStorage.getItem(STORAGE_KEY)
     } catch (e) {
-      // 忽略 localStorage 不可用情况
     }
     const theme = saved || 'default'
     if (theme !== 'default') {

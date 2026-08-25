@@ -2,9 +2,9 @@ import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   CheckSquare,
-  History,
+  CalendarDays,
   User,
-  LogOut
+  FolderKanban
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { cn } from '@/lib/utils'
@@ -15,11 +15,14 @@ import WorkRecords from './WorkRecords'
 import Profile from './Profile'
 import TaskDetail from './TaskDetail'
 import SettingsPage from './Settings'
-import { canManageSystem } from '@/lib/permissions'
-import { Button } from '@/components/ui/button'
+import Projects from './Projects'
+import ProjectDetail from './ProjectDetail'
+import SubProjectDetail from './SubProjectDetail'
+import SchedulePage from './Schedule'
+import Stats from './Stats'
+import UsersPage from './Users'
 
 export default function MobileLayout() {
-  const profile = useAuthStore((s) => s.profile)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
 
@@ -35,20 +38,27 @@ export default function MobileLayout() {
 
   const tabs = [
     { to: '/', label: '首页', icon: LayoutDashboard, end: true },
-    { to: '/tasks', label: '我的任务', icon: CheckSquare },
-    { to: '/records', label: '工作记录', icon: History },
+    { to: '/projects', label: '项目', icon: FolderKanban },
+    { to: '/tasks', label: '任务', icon: CheckSquare },
+    { to: '/schedule', label: '日程', icon: CalendarDays },
     { to: '/profile', label: '我的', icon: User }
   ]
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/20 pb-20">
+    <div className="min-h-screen flex flex-col bg-muted/20 pb-16">
       <main className="flex-1 min-w-0">
-        <div className="p-4">
+        <div className="p-3">
           <Routes>
             <Route index element={<Home />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="projects/:id" element={<ProjectDetail />} />
+            <Route path="sub-projects/:id" element={<SubProjectDetail />} />
             <Route path="tasks" element={<Tasks />} />
             <Route path="tasks/:id" element={<TaskDetail />} />
+            <Route path="schedule" element={<SchedulePage />} />
             <Route path="records" element={<WorkRecords />} />
+            <Route path="stats" element={<Stats />} />
+            <Route path="users" element={<UsersPage />} />
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<SettingsPage />} />
           </Routes>
@@ -57,7 +67,7 @@ export default function MobileLayout() {
 
       {/* 底部Tab */}
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-md z-40">
-        <div className="grid grid-cols-4 max-w-md mx-auto">
+        <div className="grid grid-cols-5 max-w-md mx-auto">
           {tabs.map((t) => (
             <NavLink
               key={t.to}
@@ -65,7 +75,7 @@ export default function MobileLayout() {
               end={t.end}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors',
+                  'flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] transition-colors',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )
               }

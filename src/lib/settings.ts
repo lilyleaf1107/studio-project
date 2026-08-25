@@ -1,4 +1,4 @@
-export const DEFAULT_STAGES: { key: string; name: string; isRepeatable?: boolean }[] = [
+﻿export const DEFAULT_STAGES: { key: string; name: string; isRepeatable?: boolean }[] = [
   { key: 'material', name: '整理资料' },
   { key: 'design', name: '设计画图' },
   { key: 'review', name: '审核修改' },
@@ -44,10 +44,10 @@ export const TASK_STATUS_LABELS: Record<string, { label: string; color: string }
 }
 
 export const TASK_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  anytime: { label: '随时进行', color: 'bg-slate-100 text-slate-600' },
-  normal: { label: '普通任务', color: 'bg-teal-50 text-teal-700' },
-  longterm: { label: '长线任务', color: 'bg-indigo-50 text-indigo-700' },
-  recurring: { label: '循环任务', color: 'bg-purple-50 text-purple-700' }
+  anytime: { label: '随时进行', color: 'bg-rose-50 text-rose-700' },
+  normal: { label: '普通任务', color: 'bg-amber-50 text-amber-700' },
+  longterm: { label: '长线任务', color: 'bg-sky-50 text-sky-700' },
+  recurring: { label: '循环任务', color: 'bg-emerald-50 text-emerald-700' }
 }
 
 export const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
@@ -63,7 +63,8 @@ export const PRIORITY_FLAGS: Record<string, string> = {
 }
 
 export const ROLE_LABELS: Record<string, string> = {
-  admin: '管理员',
+  admin: '经理',
   owner: '老板',
+  partner: '伙伴',
   staff: '员工'
 }

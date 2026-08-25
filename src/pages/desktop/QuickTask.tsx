@@ -1,15 +1,18 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { Plus, CheckCircle2, Lock } from 'lucide-react'
 import {
-  Zap,
-  FolderKanban,
-  User,
-  Calendar,
-  CheckCircle2
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -18,420 +21,395 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import Loading from '@/components/Loading'
+import { supabase } from '@/lib/supabase'
 import { useProfiles } from '@/hooks/useProfiles'
+import { useCreateTask } from '@/hooks/useTasks'
+import { useCreateWorkRecord } from '@/hooks/useWorkRecords'
 import { useBigProjects } from '@/hooks/useProjects'
 import { useSubProjects } from '@/hooks/useSubProjects'
 import { useStages } from '@/hooks/useStages'
-import { useTaskTemplates } from '@/hooks/useTaskTemplates'
-import { useCreateTask } from '@/hooks/useTasks'
-import { useCreateWorkRecord } from '@/hooks/useWorkRecords'
-import { TASK_CATEGORIES } from '@/lib/settings'
-import { cn, todayEndOfDay, addDaysISO, formatDate } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import type { TaskType, TaskPriority } from '@/types'
+import { cn, formatDate } from '@/lib/utils'
+import type { TaskType, TaskPriority, TaskCategory, BigProject, SubProject, StageConfig } from '@/types'
 
-type Tab = TaskType
+const TYPE_OPTIONS: { key: TaskType; label: string; dot: string; color: string }[] = [
+  { key: 'anytime', label: '随时进行', dot: 'bg-rose-400', color: 'rose' },
+  { key: 'normal', label: '普通任务', dot: 'bg-amber-400', color: 'amber' },
+  { key: 'longterm', label: '长线任务', dot: 'bg-sky-400', color: 'sky' },
+  { key: 'recurring', label: '循环任务', dot: 'bg-emerald-400', color: 'emerald' }
+]
 
-const tabMeta: Record<Tab, { label: string; desc: string; color: string }> = {
-  anytime: {
-    label: '随时进行',
-    desc: '没有固定截止日期，有空就做的任务。',
-    color: 'bg-slate-50 text-slate-700 ring-slate-200'
-  },
-  normal: {
-    label: '普通任务',
-    desc: '当天或短期要完成的事，如拍摄、上架、整理资料。步骤最少。',
-    color: 'bg-teal-50 text-teal-700 ring-teal-200'
-  },
-  longterm: {
-    label: '长线任务',
-    desc: '关联大项目/小项目，或按模板计算截止日期的任务。',
-    color: 'bg-indigo-50 text-indigo-700 ring-indigo-200'
-  },
-  recurring: {
-    label: '循环任务',
-    desc: '周期性重复的任务，暂不设置具体截止日期。',
-    color: 'bg-purple-50 text-purple-700 ring-purple-200'
-  }
+const PRIORITY_OPTIONS: { key: TaskPriority; flag: string; label: string }[] = [
+  { key: 'high', flag: '🔴', label: '高' },
+  { key: 'medium', flag: '🟡', label: '中' },
+  { key: 'low', flag: '🔵', label: '低' }
+]
+
+const RECURRENCE_OPTIONS: { label: string; value: string }[] = [
+  { label: '每天', value: '{"type":"daily"}' },
+  { label: '每周一', value: '{"type":"weekly","weekday":1}' },
+  { label: '每月1日', value: '{"type":"monthly","day":1}' },
+  { label: '每隔7天', value: '{"type":"custom","interval_days":7}' }
+]
+
+const TYPE_COLOR_CLASS: Record<string, string> = {
+  rose: 'border-rose-300 bg-rose-50 text-rose-700',
+  amber: 'border-amber-300 bg-amber-50 text-amber-700',
+  sky: 'border-sky-300 bg-sky-50 text-sky-700',
+  emerald: 'border-emerald-300 bg-emerald-50 text-emerald-700'
 }
 
-export default function QuickTask() {
-  const profile = useAuthStore((s) => s.profile)
-  const [tab, setTab] = useState<Tab>('normal')
-  const { data: profiles, isLoading: usersLoading } = useProfiles()
-  const { data: bigProjects } = useBigProjects()
-  const { data: allSubs } = useSubProjects()
-  const { data: stages } = useStages()
-  const { data: templates } = useTaskTemplates()
+interface QuickTaskDialogProps {
+  trigger?: React.ReactNode
+  presetBigProjectId?: string
+  presetSubProjectId?: string
+  presetStage?: string
+  lockProject?: boolean
+}
+
+export default function QuickTaskDialog({
+  trigger,
+  presetBigProjectId,
+  presetSubProjectId,
+  presetStage,
+  lockProject
+}: QuickTaskDialogProps) {
+  const { data: profiles } = useProfiles()
   const createMutation = useCreateTask()
   const createRecord = useCreateWorkRecord()
+  const [open, setOpen] = useState(false)
 
-  // 表单
-  const [categoryKey, setCategoryKey] = useState<string>('')
+  const { data: bigProjects } = useBigProjects()
+  const { data: categories } = useQuery({
+    queryKey: ['task-categories-enabled'],
+    queryFn: async (): Promise<TaskCategory[]> => {
+      const { data, error } = await supabase
+        .from('task_categories')
+        .select('*')
+        .eq('enabled', true)
+        .order('sort_order', { ascending: true })
+      if (error) throw error
+      return data as TaskCategory[]
+    }
+  })
+
+  const [type, setType] = useState<TaskType>('anytime')
+  const [categoryId, setCategoryId] = useState<string>('')
   const [assignee, setAssignee] = useState<string>('')
-  const [bigId, setBigId] = useState<string>('')
-  const [subId, setSubId] = useState<string>('')
-  const [stage, setStage] = useState<string>('')
-  const [template, setTemplate] = useState<string>('')
-  const [due, setDue] = useState<string>(formatDate(new Date()))
-  const [priority, setPriority] = useState<TaskPriority>('medium')
-  const [name, setName] = useState('')
+  const [due, setDue] = useState<string>('')
+  const [dueEnd, setDueEnd] = useState<string>('')
+  const [priority, setPriority] = useState<TaskPriority>('low')
+  const [title, setTitle] = useState('')
   const [note, setNote] = useState('')
   const [recurrenceRule, setRecurrenceRule] = useState<string>('')
 
-  const RECURRENCE_OPTIONS: { label: string; value: string }[] = [
-    { label: '每天', value: '{"type":"daily"}' },
-    { label: '每周一', value: '{"type":"weekly","weekday":1}' },
-    { label: '每月1日', value: '{"type":"monthly","day":1}' },
-    { label: '每隔7天', value: '{"type":"custom","interval_days":7}' }
-  ]
+  // 项目相关
+  const [bigProjectId, setBigProjectId] = useState<string>(presetBigProjectId || '')
+  const [subProjectId, setSubProjectId] = useState<string>(presetSubProjectId || '')
+  const [stage, setStage] = useState<string>(presetStage || '')
 
-  const subOptions = useMemo(
-    () => (bigId ? allSubs?.filter((s) => s.big_project_id === bigId) : allSubs) || [],
-    [allSubs, bigId]
-  )
+  const { data: subProjects } = useSubProjects(bigProjectId || undefined)
+  const { data: stages } = useStages()
 
-  const selTemplate = templates?.find((t) => t.key === template)
-  const selCategory = TASK_CATEGORIES.find((c) => c.key === categoryKey)
+  // 当 preset 变化时同步（例如从不同的小项目页面打开）
+  useEffect(() => {
+    if (presetBigProjectId) setBigProjectId(presetBigProjectId)
+    if (presetSubProjectId) setSubProjectId(presetSubProjectId)
+    if (presetStage) setStage(presetStage)
+  }, [presetBigProjectId, presetSubProjectId, presetStage])
 
-  // 自动生成任务名
-  const autoName = useMemo(() => {
-    if (name.trim()) return name.trim()
+  // 切换大项目时清空小项目
+  function handleBigProjectChange(v: string) {
+    if (lockProject) return
+    setBigProjectId(v)
+    setSubProjectId('')
+    setStage('')
+  }
+
+  function handleSubProjectChange(v: string) {
+    if (lockProject) return
+    setSubProjectId(v)
+    const sp = (subProjects || []).find((s) => s.id === v) as SubProject | undefined
+    if (sp?.stage) setStage(sp.stage)
+  }
+
+  const selCategory = categories?.find((c) => c.id === categoryId)
+  const assigneeName = profiles?.find((p) => p.id === assignee)?.name
+
+  const autoTitle = useMemo(() => {
+    if (title.trim()) return title.trim()
     const parts: string[] = []
-    if (tab === 'longterm') {
-      const bp = bigProjects?.find((x) => x.id === bigId)
-      const sp = subOptions.find((x) => x.id === subId)
-      if (sp) parts.push(sp.name)
-      else if (bp) parts.push(bp.name)
-    }
-    if (selTemplate) parts.push(selTemplate.name)
-    else if (selCategory) parts.push(selCategory.name + '任务')
-    return parts.join(' · ') || ''
-  }, [name, tab, bigProjects, subOptions, bigId, subId, selTemplate, selCategory])
+    if (selCategory) parts.push(selCategory.name)
+    if (assigneeName) parts.push(assigneeName)
+    return parts.join('-')
+  }, [title, selCategory, assigneeName])
 
-  // 自动选截止日期
-  useMemo(() => {
-    if (tab === 'longterm' && selTemplate?.default_due_days) {
-      const d = new Date()
-      d.setDate(d.getDate() + selTemplate.default_due_days)
-      setDue(formatDate(d))
-    } else if (tab === 'normal') {
-      setDue(formatDate(new Date()))
-    } else if (tab === 'anytime' || tab === 'recurring') {
+  useEffect(() => {
+    if (type === 'anytime' || type === 'recurring') {
       setDue('')
+      setDueEnd('')
+    } else if (type === 'normal') {
+      setDue(formatDate(new Date()))
+      setDueEnd('')
     }
-  }, [tab, selTemplate?.default_due_days])
+  }, [type])
+
+  function reset() {
+    setType('anytime')
+    setCategoryId('')
+    setAssignee('')
+    setDue('')
+    setDueEnd('')
+    setPriority('low')
+    setTitle('')
+    setNote('')
+    setRecurrenceRule('')
+    if (!lockProject) {
+      setBigProjectId('')
+      setSubProjectId('')
+      setStage('')
+    }
+  }
 
   async function handleSubmit() {
+    if (!categoryId) {
+      toast.error('请选择任务分类')
+      return
+    }
     if (!assignee) {
       toast.error('请选择负责人')
       return
     }
-    const finalName = autoName
-    if (!finalName) {
-      toast.error('请补充任务名或选择类型')
-      return
-    }
-    if (tab !== 'anytime' && tab !== 'recurring' && !due) {
-      toast.error('请选择截止日期')
+    if ((type === 'normal' || type === 'longterm') && !due) {
+      toast.error('请选择日期')
       return
     }
     const dueIso = due ? new Date(due + 'T23:59:59').toISOString() : undefined
-    const startDateIso = tab === 'recurring' ? new Date().toISOString() : undefined
+    const startDateIso = (type === 'longterm' && dueEnd) ? new Date(dueEnd + 'T00:00:00').toISOString() : undefined
     try {
       const task = await createMutation.mutateAsync({
-        name: finalName,
-        type: tab,
-        task_category: categoryKey || selTemplate?.task_category,
-        big_project_id: bigId || undefined,
-        sub_project_id: subId || undefined,
+        name: autoTitle,
+        type,
+        task_category_id: categoryId || undefined,
+        big_project_id: bigProjectId || undefined,
+        sub_project_id: subProjectId || undefined,
         stage: stage || undefined,
         assignee_id: assignee,
         due_date: dueIso,
         start_date: startDateIso,
         priority,
         description: note.trim() || undefined,
-        recurrence_rule: tab === 'recurring' && recurrenceRule ? recurrenceRule : undefined
+        recurrence_rule: type === 'recurring' && recurrenceRule ? recurrenceRule : undefined
       })
-      const assigneeName = profiles?.find((p) => p.id === assignee)?.name
       await createRecord.mutateAsync({
         task_id: task.id,
-        big_project_id: bigId || undefined,
-        sub_project_id: subId || undefined,
         action: 'assign',
-        content: `分配任务给 ${assigneeName || '员工'}，截止日期 ${due}，优先级 ${priority === 'high' ? '高' : priority === 'medium' ? '中' : '低'}`
+        content: '分配任务给 ' + (assigneeName || '员工')
       })
-      toast.success(`任务「${finalName.slice(0, 20)}」已创建并通知 ${assigneeName}`)
-      // 重置
-      setName('')
-      setNote('')
-      setCategoryKey('')
-      setTemplate('')
+      toast.success('任务已创建')
+      setOpen(false)
+      reset()
     } catch (e: any) {
       toast.error(e?.message || '创建失败')
     }
   }
 
-  if (usersLoading) return <Loading />
-
-  const meta = tabMeta[tab]
+  const bigProjectName = (bigProjects || []).find((p) => p.id === bigProjectId)?.name
+  const subProjectName = (subProjects || []).find((s) => s.id === subProjectId)?.name
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Zap className="h-6 w-6 text-amber-500" />
-          快速创建任务
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">三步完成创建，尽量少填写。</p>
-      </div>
-
-      {/* 任务类型 Tab */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {(Object.keys(tabMeta) as Tab[]).map((t) => {
-              const m = tabMeta[t]
-              const active = tab === t
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    'text-left p-4 rounded-xl border-2 transition-all',
-                    active ? `${m.color} ring-2` : 'border-border hover:border-muted-foreground/30'
-                  )}
-                >
-                  <div className="font-semibold">{m.label}</div>
-                  <div className={cn(
-                    'text-xs mt-1',
-                    active ? 'opacity-90' : 'text-muted-foreground'
-                  )}>
-                    {m.desc}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || (
+          <Button size="sm" className="gap-1.5">
+            <Plus className="h-4 w-4" />新建任务
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>快速新建任务</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {/* 0. 所属项目（可选） */}
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+              0. 所属项目（可选）{lockProject && <span className="ml-1 text-[10px] text-muted-foreground/70">·已锁定</span>}
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-1">大项目</div>
+                {lockProject ? (
+                  <div className="h-9 px-3 flex items-center text-xs border rounded-md bg-muted/30 truncate">
+                    <Lock className="h-3 w-3 mr-1 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{bigProjectName || '-'}</span>
                   </div>
-                </button>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 快捷类型按钮 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {tab === 'longterm' ? '1. 选择任务模板' : '1. 选择任务类型'}
-          </CardTitle>
-          <CardDescription className="text-xs">点击任一按钮自动生成任务名</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {tab === 'longterm' ? (
-              (templates || []).map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => {
-                    setTemplate(t.key)
-                    setCategoryKey(t.task_category)
-                  }}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                    template === t.key
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-card border-border hover:border-primary hover:text-primary'
-                  )}
-                >
-                  {t.name}
-                </button>
-              ))
-            ) : (
-              TASK_CATEGORIES.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => setCategoryKey(c.key)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                    categoryKey === c.key
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-card border-border hover:border-primary hover:text-primary'
-                  )}
-                >
-                  {c.name}
-                </button>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 关联项目（除了随时进行都可选） */}
-      {tab !== 'anytime' && tab !== 'recurring' && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">2. 关联项目（可选）</CardTitle>
-            <CardDescription className="text-xs">长线任务建议关联小项目；普通任务可不关联。</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                <FolderKanban className="h-3.5 w-3.5" />
-                大项目
-              </Label>
-              <Select value={bigId} onValueChange={(v) => { setBigId(v); setSubId('') }}>
-                <SelectTrigger><SelectValue placeholder="可选" /></SelectTrigger>
-                <SelectContent>
-                  {(bigProjects || []).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">小项目</Label>
-              <Select value={subId} onValueChange={setSubId}>
-                <SelectTrigger><SelectValue placeholder="可选" /></SelectTrigger>
-                <SelectContent>
-                  {subOptions.length === 0 ? (
-                    <div className="p-2 text-xs text-muted-foreground">先选大项目或暂无小项目</div>
-                  ) : (
-                    subOptions.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">阶段</Label>
-              <Select value={stage} onValueChange={setStage}>
-                <SelectTrigger><SelectValue placeholder="可选" /></SelectTrigger>
-                <SelectContent>
-                  {(stages || []).map((s) => (
-                    <SelectItem key={s.key} value={s.key}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 分配人和截止 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {(tab === 'anytime' || tab === 'recurring') ? '2. 分配与截止' : (tab === 'longterm' || tab === 'normal' ? '3. 分配与截止' : '2. 分配与截止')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1">
-              <User className="h-3.5 w-3.5" />
-              负责人 <span className="text-red-500">*</span>
-            </Label>
-            <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger><SelectValue placeholder="选择员工" /></SelectTrigger>
-              <SelectContent>
-                {(profiles || []).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              截止日期 {tab !== 'anytime' && tab !== 'recurring' && <span className="text-red-500">*</span>}
-            </Label>
-            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} disabled={tab === 'anytime' || tab === 'recurring'} />
-            {tab === 'recurring' && (
-              <div className="pt-2 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">重复规则</Label>
-                <Select value={recurrenceRule} onValueChange={setRecurrenceRule}>
-                  <SelectTrigger><SelectValue placeholder="选择重复周期（可选）" /></SelectTrigger>
+                ) : (
+                  <Select value={bigProjectId} onValueChange={handleBigProjectChange}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="选大项目" /></SelectTrigger>
+                    <SelectContent>
+                      {(bigProjects || []).map((p: BigProject) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-1">小项目</div>
+                {lockProject ? (
+                  <div className="h-9 px-3 flex items-center text-xs border rounded-md bg-muted/30 truncate">
+                    <Lock className="h-3 w-3 mr-1 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{subProjectName || '-'}</span>
+                  </div>
+                ) : (
+                  <Select value={subProjectId} onValueChange={handleSubProjectChange} disabled={!bigProjectId}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="选小项目" /></SelectTrigger>
+                    <SelectContent>
+                      {(subProjects || []).map((s: SubProject) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-1">阶段</div>
+                <Select value={stage} onValueChange={setStage} disabled={!bigProjectId}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="选阶段" /></SelectTrigger>
                   <SelectContent>
-                    {RECURRENCE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    {(stages || []).map((s: StageConfig) => (
+                      <SelectItem key={s.key} value={s.key}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">优先级</Label>
-            <Select value={priority} onValueChange={(v: TaskPriority) => setPriority(v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="high">高</SelectItem>
-                <SelectItem value="medium">中</SelectItem>
-                <SelectItem value="low">低</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* 任务名确认 + 备注 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">确认任务</CardTitle>
-          <CardDescription className="text-xs">任务名由系统自动生成，必要时可手动修改。</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">任务名称预览</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={autoName || '请先选择任务类型以自动生成名称'}
-              className={cn(!name && 'bg-muted/40 italic')}
-            />
-            {!name && autoName && (
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                将自动保存为：<span className="font-medium text-foreground">{autoName}</span>
+          {/* 1. 任务类型 */}
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">1. 任务类型</Label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {TYPE_OPTIONS.map((t) => (
+                <button key={t.key} type="button" onClick={() => setType(t.key)}
+                  className={cn('flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 transition-all',
+                    type === t.key ? TYPE_COLOR_CLASS[t.color] : 'border-border hover:border-primary/50')}>
+                  <span className={`h-2.5 w-2.5 rounded-full ${t.dot}`} />
+                  <span className="text-[10px] font-medium text-center">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. 任务分类 */}
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">2. 任务分类</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {(categories || []).map((cat) => (
+                <button key={cat.id} type="button" onClick={() => setCategoryId(cat.id)}
+                  className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                    categoryId === cat.id ? 'bg-primary text-white border-primary' : 'bg-card border-border hover:border-primary/50')}>
+                  {cat.name}
+                </button>
+              ))}
+              {(!categories || categories.length === 0) && (
+                <span className="text-xs text-muted-foreground">暂无分类，请先在设置中添加</span>
+              )}
+            </div>
+          </div>
+
+          {/* 3. 负责人 */}
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">3. 负责人</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {(profiles || []).map((p) => (
+                <button key={p.id} type="button" onClick={() => setAssignee(p.id)}
+                  className={cn('flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-all',
+                    assignee === p.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/50')}>
+                  <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold">
+                    {p.name?.slice(0, 1)}
+                  </div>
+                  <span className={cn('text-xs', assignee === p.id && 'text-primary font-medium')}>{p.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 4. 日期 */}
+          {type !== 'anytime' && (
+            <div>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                4. 日期{type === 'recurring' ? '（循环规则）' : ''}
+              </Label>
+              {type === 'normal' && (
+                <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="max-w-xs" />
+              )}
+              {type === 'longterm' && (
+                <div className="grid grid-cols-2 gap-2 max-w-md">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground mb-1">开始</div>
+                    <Input type="date" value={dueEnd} onChange={(e) => setDueEnd(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground mb-1">截止</div>
+                    <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+                  </div>
+                </div>
+              )}
+              {type === 'recurring' && (
+                <div className="flex flex-wrap gap-1.5">
+                  {RECURRENCE_OPTIONS.map((opt) => (
+                    <button key={opt.value} type="button" onClick={() => setRecurrenceRule(opt.value)}
+                      className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                        recurrenceRule === opt.value ? 'bg-purple-500 text-white border-purple-500' : 'bg-card border-border hover:border-purple-400')}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 5. 优先级 */}
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+              {type === 'anytime' ? '4' : '5'}. 优先级
+            </Label>
+            <div className="flex gap-2">
+              {PRIORITY_OPTIONS.map((p) => (
+                <button key={p.key} type="button" onClick={() => setPriority(p.key)}
+                  className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 transition-all',
+                    priority === p.key ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/50')}>
+                  <span className="text-base">{p.flag}</span>
+                  <span className={cn('text-xs', priority === p.key && 'text-primary font-medium')}>{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 确认提交 */}
+          <div className="space-y-2 border-t pt-3">
+            <Label className="text-xs font-semibold text-muted-foreground">确认任务</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder={autoTitle || '选了分类和负责人会自动生成'}
+              className={cn(!title && autoTitle && 'bg-muted/30 italic')} />
+            {!title && autoTitle && (
+              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                自动命名：<span className="font-medium text-foreground">{autoTitle}</span>
               </div>
             )}
+            <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="补充说明（可选）" />
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">补充说明（可选，一句话即可）</Label>
-            <Textarea
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="如：请参考 XX 文档 / 周三下午前完成初稿 等"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 提交 */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-        <div className="text-xs text-muted-foreground">
-          创建后系统会自动生成工作记录，并在员工工作台出现。
         </div>
-        <Button
-          size="lg"
-          onClick={handleSubmit}
-          disabled={createMutation.isPending}
-          className="gap-2"
-        >
-          {createMutation.isPending ? (
-            '创建中...'
-          ) : (
-            <>
-              <CheckCircle2 className="h-4 w-4" />
-              保存并通知员工
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSubmit} disabled={createMutation.isPending} className="gap-1.5">
+            {createMutation.isPending ? '创建中...' : (<><CheckCircle2 className="h-4 w-4" />创建任务</>)}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

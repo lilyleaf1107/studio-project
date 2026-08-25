@@ -12,11 +12,13 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { useThemeStore, THEMES } from '@/store/theme'
 import { JOB_TITLE_PRESETS } from '@/lib/settings'
+import { canManageSystem, canOnlyViewAppearance } from '@/lib/permissions'
 import type { TaskCategory, StageConfig } from '@/types'
 
 export default function SettingsPage() {
   const profile = useAuthStore((s) => s.profile)
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = canManageSystem(profile?.role)
+  const appearanceOnly = canOnlyViewAppearance(profile?.role)
   const qc = useQueryClient()
 
   const currentTheme = useThemeStore((s) => s.theme)
@@ -250,6 +252,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {!appearanceOnly && (
+      <>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -521,7 +525,10 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
+      {!appearanceOnly && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">身份卡预设</CardTitle>
@@ -542,6 +549,7 @@ export default function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }

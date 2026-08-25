@@ -26,6 +26,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { ROLE_LABELS, JOB_TITLE_PRESETS } from '@/lib/settings'
 import { canManageUsers, canEditJobTitle } from '@/lib/permissions'
+import { canManageSystem } from '@/lib/permissions'
 import { formatDateTime } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types'
 
@@ -37,6 +38,7 @@ export default function UsersPage() {
   const profile = useAuthStore((s) => s.profile)
   const qc = useQueryClient()
   const isAdmin = canManageUsers(profile?.role)
+  const isBoss = profile?.role === 'owner'
   const [inviteOpen, setInviteOpen] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' as UserRole, job_title: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -135,7 +137,7 @@ export default function UsersPage() {
             </DialogHeader>
             <form onSubmit={handleInvite} className="space-y-4">
               <div className="space-y-2">
-                <Label>姓名</Label>
+                <Label>昵称</Label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例如：张三" required />
               </div>
               <div className="space-y-2">
@@ -152,7 +154,8 @@ export default function UsersPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="owner">老板</SelectItem>
-                    <SelectItem value="admin">管理员</SelectItem>
+                    <SelectItem value="admin">经理</SelectItem>
+                    <SelectItem value="partner">伙伴</SelectItem>
                     <SelectItem value="staff">员工</SelectItem>
                   </SelectContent>
                 </Select>
@@ -189,7 +192,7 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>姓名</TableHead>
+                <TableHead>昵称</TableHead>
                 <TableHead>邮箱</TableHead>
                 <TableHead>角色</TableHead>
                 <TableHead>身份卡</TableHead>
@@ -221,7 +224,7 @@ export default function UsersPage() {
                     <TableCell>
                       <Select
                         defaultValue={p.role}
-                        disabled={isSelf || !isAdmin}
+                        disabled={isSelf || !isAdmin || (isBoss && p.role === 'admin')}
                         onValueChange={(v: UserRole) => updateRoleMutation.mutate({ id: p.id, role: v })}
                       >
                         <SelectTrigger className="w-28 h-8 text-xs">
@@ -237,7 +240,7 @@ export default function UsersPage() {
                     <TableCell>
                       <Select
                         defaultValue={p.job_title || ''}
-                        disabled={isSelf || !canEditJobTitle(profile?.role, p.role)}
+                        disabled={!canEditJobTitle(profile?.role, p.role, isSelf)}
                         onValueChange={(v) => updateJobTitleMutation.mutate({ id: p.id, job_title: v })}
                       >
                         <SelectTrigger className="w-24 h-8 text-xs">
@@ -262,17 +265,6 @@ export default function UsersPage() {
               })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">权限说明</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <div><strong className="text-foreground">老板：</strong>查看所有项目、任务、工作记录和数据统计，可验收任务。</div>
-          <div><strong className="text-foreground">管理员：</strong>拥有老板全部权限，另可管理账号、角色、任务模板、系统设置。</div>
-          <div><strong className="text-foreground">员工：</strong>只能查看和操作分配给自己的任务、自己参与的项目和自己的工作记录。</div>
         </CardContent>
       </Card>
     </div>

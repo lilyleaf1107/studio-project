@@ -46,6 +46,7 @@ export interface CreateTaskInput {
   name: string
   type: TaskType
   task_category?: string
+  task_category_id?: string
   big_project_id?: string
   sub_project_id?: string
   stage?: string
@@ -68,6 +69,7 @@ export function useCreateTask() {
           name: input.name,
           type: input.type,
           task_category: input.task_category,
+          task_category_id: input.task_category_id,
           big_project_id: input.big_project_id,
           sub_project_id: input.sub_project_id,
           stage: input.stage,

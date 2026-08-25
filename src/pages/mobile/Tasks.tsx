@@ -13,7 +13,9 @@ import {
 } from '@/lib/settings'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
-import { Search } from 'lucide-react'
+import { canCreateTask } from '@/lib/permissions'
+import { Search, Plus } from 'lucide-react'
+import QuickTaskDialog from '@/pages/desktop/QuickTask'
 import type { TaskStatus } from '@/types'
 
 export default function Tasks() {
@@ -55,7 +57,18 @@ export default function Tasks() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">我的任务</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-bold">我的任务</h1>
+        {canCreateTask(profile?.role) && (
+          <QuickTaskDialog
+            trigger={
+              <Button size="sm" className="gap-1 shrink-0">
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
+          />
+        )}
+      </div>
 
       <div className="flex gap-2 -mx-1 overflow-x-auto px-1 pb-1">
         {tabs.map((t) => (

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Filter, ChevronRight } from 'lucide-react'
+import { Search, Filter, ChevronRight, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,9 +23,10 @@ import {
   PRIORITY_FLAGS,
   TASK_CATEGORIES
 } from '@/lib/settings'
-import { canViewAllProjects, canAdjustPriority } from '@/lib/permissions'
+import { canViewAllProjects, canAdjustPriority, canCreateTask } from '@/lib/permissions'
 import { cn, formatDate, isOverdue, getCountdown } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
+import QuickTaskDialog from './QuickTask'
 import type { TaskStatus, TaskType, TaskPriority } from '@/types'
 
 const PRIORITY_CYCLE: TaskPriority[] = ['low', 'medium', 'high']
@@ -85,6 +86,7 @@ export default function Tasks() {
               : `我参与的任务（${tasks?.length || 0}）`}
           </p>
         </div>
+        {canCreateTask(profile?.role) && <QuickTaskDialog />}
       </div>
 
       {/* 筛选条 */}
