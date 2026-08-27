@@ -279,7 +279,7 @@ export default function Stats() {
       {canAll && (
         <Card>
           <CardContent className="p-3">
-            <div className="font-medium text-sm mb-2">大项目状态（{totalBP} 个）</div>
+            <div className="font-medium text-sm mb-2">项目状态（{totalBP} 个）</div>
             <MiniBar
               labels={Object.entries(PROJECT_STATUS_LABELS).map(([_, v]) => v.label)}
               values={Object.keys(PROJECT_STATUS_LABELS).map((k) => bpStatusCount[k] || 0)}

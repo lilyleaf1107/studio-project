@@ -77,7 +77,7 @@ export default function Projects() {
     }
     try {
       await createMutation.mutateAsync({ ...form })
-      toast.success('大项目已创建')
+      toast.success('项目已创建')
       setOpen(false)
       setForm({ ...form, name: '', code: '', description: '' })
     } catch (e: any) {
@@ -89,7 +89,7 @@ export default function Projects() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">大项目</h1>
+          <h1 className="text-xl font-bold">项目</h1>
           <p className="text-xs text-muted-foreground mt-0.5">共 {projects?.length || 0} 个</p>
         </div>
         {canCreateProject(profile?.role) && (
@@ -99,7 +99,7 @@ export default function Projects() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>新增大项目</DialogTitle>
+                <DialogTitle>新增项目</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="space-y-2">
@@ -208,7 +208,7 @@ export default function Projects() {
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            {projects?.length === 0 ? '还没有大项目' : '没有符合条件的项目'}
+            {projects?.length === 0 ? '还没有项目' : '没有符合条件的项目'}
           </CardContent>
         </Card>
       ) : (

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -73,7 +73,7 @@ export default function SubProjectDetail() {
     return (
       <Card className="p-10 text-center">
         <div className="text-muted-foreground mb-4">未找到该小项目</div>
-        <Link to="/projects" className="text-primary hover:underline">← 返回大项目列表</Link>
+        <Link to="/projects" className="text-primary hover:underline">← 返回项目列表</Link>
       </Card>
     )
   }
@@ -90,7 +90,7 @@ export default function SubProjectDetail() {
         </Button>
         {bigProject && (
           <>
-            <Link to="/projects" className="hover:text-foreground">大项目</Link>
+            <Link to="/projects" className="hover:text-foreground">项目</Link>
             <ChevronRight className="h-4 w-4" />
             <Link to={`/projects/${bigProject.id}`} className="hover:text-foreground">{bigProject.name}</Link>
             <ChevronRight className="h-4 w-4" />

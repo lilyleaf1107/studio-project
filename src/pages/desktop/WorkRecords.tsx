@@ -99,7 +99,7 @@ export default function WorkRecords() {
             </SelectContent>
           </Select>
           <Select value={bpF} onValueChange={setBpF}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="所属大项目" /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder="所属项目" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部项目</SelectItem>
               {(bigProjects || []).map((p) => (

@@ -117,7 +117,7 @@ export default function QuickTaskDialog({
     if (presetStage) setStage(presetStage)
   }, [presetBigProjectId, presetSubProjectId, presetStage])
 
-  // 切换大项目时清空小项目
+  // 切换项目时清空小项目
   function handleBigProjectChange(v: string) {
     if (lockProject) return
     setBigProjectId(v)
@@ -237,7 +237,7 @@ export default function QuickTaskDialog({
             </Label>
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <div className="text-[10px] text-muted-foreground mb-1">大项目</div>
+                <div className="text-[10px] text-muted-foreground mb-1">项目</div>
                 {lockProject ? (
                   <div className="h-9 px-3 flex items-center text-xs border rounded-md bg-muted/30 truncate">
                     <Lock className="h-3 w-3 mr-1 shrink-0 text-muted-foreground" />
@@ -245,7 +245,7 @@ export default function QuickTaskDialog({
                   </div>
                 ) : (
                   <Select value={bigProjectId} onValueChange={handleBigProjectChange}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="选大项目" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="选项目" /></SelectTrigger>
                     <SelectContent>
                       {(bigProjects || []).map((p: BigProject) => (
                         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>

@@ -149,7 +149,7 @@ export default function Dashboard() {
   }), [canAll, userId])
   const { data: recentRecords } = useWorkRecords(recordFilters)
 
-  // 进行中的大项目（老板视图）
+  // 进行中的项目（老板视图）
   const { data: activeBPs } = useBigProjects()
   const activeBPLimited = useMemo(() => {
     const list = activeBPs || []
@@ -183,7 +183,7 @@ export default function Dashboard() {
 
   const cards = canAll
     ? [
-        { label: '进行中大项目', value: globalStats?.bigProjects || 0, color: 'text-blue-600', icon: FolderKanban, bg: 'bg-blue-50' },
+        { label: '进行中项目', value: globalStats?.bigProjects || 0, color: 'text-blue-600', icon: FolderKanban, bg: 'bg-blue-50' },
         { label: '进行中小项目', value: globalStats?.subProjects || 0, color: 'text-indigo-600', icon: FolderGit2, bg: 'bg-indigo-50' },
         { label: '待验收任务', value: globalStats?.reviewTasks || 0, color: 'text-purple-600', icon: Eye, bg: 'bg-purple-50' },
         { label: '风险/延期提醒', value: globalStats?.delayedTasks || 0, color: 'text-red-600', icon: AlertTriangle, bg: 'bg-red-50' }
@@ -419,11 +419,11 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* 老板视图：进行中大项目 */}
+        {/* 老板视图：进行中项目 */}
         {canAll && (
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-base">进行中大项目</CardTitle>
+              <CardTitle className="text-base">进行中项目</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -436,7 +436,7 @@ export default function Dashboard() {
             <CardContent>
               {activeBPLimited.length === 0 ? (
                 <div className="text-sm text-muted-foreground py-8 text-center">
-                  暂无进行中的大项目
+                  暂无进行中的项目
                 </div>
               ) : (
                 <div className="space-y-2">

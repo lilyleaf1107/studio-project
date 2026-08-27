@@ -276,7 +276,7 @@ export default function Stats() {
           <Card>
             <CardContent className="p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <FolderKanban className="h-4 w-4" /> 大项目完成率
+                <FolderKanban className="h-4 w-4" /> 项目完成率
               </div>
               <div className="text-3xl font-bold text-indigo-600">{bpCompletion}%</div>
               <div className="text-xs text-muted-foreground mt-2">
@@ -397,7 +397,7 @@ export default function Stats() {
         {canAll && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">大项目状态（{totalBP} 个）</CardTitle>
+              <CardTitle className="text-base">项目状态（{totalBP} 个）</CardTitle>
             </CardHeader>
             <CardContent>
               <Bar

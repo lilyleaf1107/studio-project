@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Clock } from 'lucide-react'
 import {
@@ -74,10 +74,7 @@ export default function QuickEventDialog({ trigger, defaultDate }: Props) {
       toast.error('请输入标题')
       return
     }
-    if (form.start_time && form.end_time && form.start_time >= form.end_time) {
-      toast.error('结束时间必须晚于开始时间')
-      return
-    }
+    // 允许跨日：end_time 早于 start_time 视为第二天结束，不再报错
     try {
       await createMutation.mutateAsync({
         title: form.title.trim(),

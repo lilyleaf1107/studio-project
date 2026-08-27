@@ -78,7 +78,7 @@ export default function Projects() {
     }
     try {
       await createMutation.mutateAsync({ ...form })
-      toast.success('大项目已创建')
+      toast.success('项目已创建')
       setOpen(false)
       setForm({
         ...form,
@@ -95,19 +95,19 @@ export default function Projects() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">大项目</h1>
+          <h1 className="text-2xl font-bold tracking-tight">项目</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            管理长线大项目，以及下面拆分的小项目（共 {projects?.length || 0} 个大项目）
+            管理长线项目，以及下面拆分的小项目（共 {projects?.length || 0} 个）
           </p>
         </div>
         {canCreateProject(profile?.role) && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2"><Plus className="h-4 w-4" />新增大项目</Button>
+              <Button className="gap-2"><Plus className="h-4 w-4" />新增项目</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>新增大项目</DialogTitle>
+                <DialogTitle>新增项目</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -235,7 +235,7 @@ export default function Projects() {
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
-                    {projects?.length === 0 ? '还没有大项目，点击右上角新建一个' : '没有符合条件的项目'}
+                    {projects?.length === 0 ? '还没有项目，点击右上角新建一个' : '没有符合条件的项目'}
                   </TableCell>
                 </TableRow>
               )}

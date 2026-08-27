@@ -236,7 +236,7 @@ export default function Files() {
             <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr_auto] gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <FolderKanban className="h-3.5 w-3.5" /> 关联大项目（可选）
+                  <FolderKanban className="h-3.5 w-3.5" /> 关联项目（可选）
                 </Label>
                 <Select value={uploadBP} onValueChange={setUploadBP}>
                   <SelectTrigger><SelectValue placeholder="未分类" /></SelectTrigger>
@@ -307,7 +307,7 @@ export default function Files() {
             筛选：
           </div>
           <Select value={bpF} onValueChange={setBpF}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="所属大项目" /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder="所属项目" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部项目</SelectItem>
               {(bigProjects || []).map((p) => (

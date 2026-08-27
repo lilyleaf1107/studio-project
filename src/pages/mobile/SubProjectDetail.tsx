@@ -62,7 +62,7 @@ export default function SubProjectDetail() {
       <Card>
         <CardContent className="p-8 text-center">
           <div className="text-muted-foreground mb-3">未找到该小项目</div>
-          <Link to="/projects" className="text-primary">← 返回大项目列表</Link>
+          <Link to="/projects" className="text-primary">← 返回项目列表</Link>
         </CardContent>
       </Card>
     )
