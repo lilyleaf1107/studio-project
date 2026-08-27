@@ -1,5 +1,6 @@
-﻿import { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,13 +10,15 @@ import {
   BarChart3,
   CalendarDays,
   CalendarRange,
-  Plus
+  Plus,
+  Pencil,
+  Trash2
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn, formatDate, isOverdue } from '@/lib/utils'
 import { useTasks } from '@/hooks/useTasks'
-import { usePersonalEvents } from '@/hooks/usePersonalEvents'
+import { usePersonalEvents, useDeletePersonalEvent } from '@/hooks/usePersonalEvents'
 import { PRIORITY_FLAGS, TASK_STATUS_LABELS } from '@/lib/settings'
 import GanttChart from '@/components/schedule/GanttChart'
 import TimelineView from '@/components/schedule/TimelineView'
@@ -56,6 +59,10 @@ export default function SchedulePage() {
   const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<ViewMode>('day')
   const [cursorDate, setCursorDate] = useState<Date>(new Date())
+  const [editingEvent, setEditingEvent] = useState<PersonalEvent | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+
+  const deleteMutation = useDeletePersonalEvent()
 
   const today = useMemo(() => new Date(), [])
 
@@ -72,6 +79,21 @@ export default function SchedulePage() {
 
   const { data: tasks } = useTasks()
   const { data: events } = usePersonalEvents(range)
+
+  function openEdit(ev: PersonalEvent) {
+    setEditingEvent(ev)
+    setEditOpen(true)
+  }
+
+  async function handleDelete(ev: PersonalEvent) {
+    if (!window.confirm(`确定删除事件「${ev.title}」？`)) return
+    try {
+      await deleteMutation.mutateAsync(ev.id)
+      toast.success('事件已删除')
+    } catch (e: any) {
+      toast.error(e?.message || '删除失败')
+    }
+  }
 
   function goPrev() {
     const d = new Date(cursorDate)
@@ -160,7 +182,14 @@ export default function SchedulePage() {
       <Card>
         <CardContent className="p-4">
           {viewMode === 'day' && (
-            <DayView cursorDate={cursorDate} tasks={tasks || []} events={events || []} onTaskClick={(id) => navigate(`/tasks/${id}`)} />
+            <DayView
+              cursorDate={cursorDate}
+              tasks={tasks || []}
+              events={events || []}
+              onTaskClick={(id) => navigate(`/tasks/${id}`)}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+            />
           )}
           {viewMode === 'week' && (
             <WeekView cursorDate={cursorDate} tasks={tasks || []} events={events || []} onTaskClick={(id) => navigate(`/tasks/${id}`)} />
@@ -189,6 +218,16 @@ export default function SchedulePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 编辑事件弹窗 */}
+      <QuickEventDialog
+        event={editingEvent}
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v)
+          if (!v) setEditingEvent(null)
+        }}
+      />
     </div>
   )
 }
@@ -198,12 +237,16 @@ function DayView({
   cursorDate,
   tasks,
   events,
-  onTaskClick
+  onTaskClick,
+  onEdit,
+  onDelete
 }: {
   cursorDate: Date
   tasks: Task[]
   events: PersonalEvent[]
   onTaskClick: (id: string) => void
+  onEdit?: (ev: PersonalEvent) => void
+  onDelete?: (ev: PersonalEvent) => void
 }) {
   const dayTasks = tasks.filter((t) => isSameDay(t.due_date, cursorDate) && t.status !== 'done')
   const dayEvents = events.filter((e) => e.event_date === formatDate(cursorDate))
@@ -259,13 +302,33 @@ function DayView({
           ) : (
             <div className="space-y-1.5">
               {dayEvents.map((e) => (
-                <div key={e.id} className="flex items-center gap-2 p-2 rounded-lg border bg-emerald-50/50 border-emerald-200">
-                  <Clock className="h-3.5 w-3.5 text-emerald-600" />
+                <div key={e.id} className="group flex items-center gap-2 p-2 rounded-lg border bg-emerald-50/50 border-emerald-200">
+                  <Clock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{e.title}</div>
                     <div className="text-[10px] text-muted-foreground">
                       {e.start_time || '全天'}{e.end_time ? ` - ${e.end_time}` : ''}
                     </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(ev) => { ev.stopPropagation(); onEdit?.(e) }}
+                      title="编辑"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={(ev) => { ev.stopPropagation(); onDelete?.(e) }}
+                      title="删除"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}

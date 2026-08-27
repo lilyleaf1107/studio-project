@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Plus, Clock } from 'lucide-react'
 import {
@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { useCreatePersonalEvent } from '@/hooks/usePersonalEvents'
+import { useCreatePersonalEvent, useUpdatePersonalEvent } from '@/hooks/usePersonalEvents'
 import { formatDate } from '@/lib/utils'
+import type { PersonalEvent } from '@/types'
 
 const COLOR_OPTIONS = [
   { key: 'emerald', label: '翠绿', bg: 'bg-emerald-500' },
@@ -40,11 +41,18 @@ const RECURRENCE_OPTIONS = [
 interface Props {
   trigger?: React.ReactNode
   defaultDate?: Date
+  event?: PersonalEvent | null
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export default function QuickEventDialog({ trigger, defaultDate }: Props) {
+export default function QuickEventDialog({ trigger, defaultDate, event, open, onOpenChange }: Props) {
   const createMutation = useCreatePersonalEvent()
-  const [open, setOpen] = useState(false)
+  const updateMutation = useUpdatePersonalEvent()
+  const isEdit = !!event
+  const [internalOpen, setInternalOpen] = useState(false)
+  const openState = open !== undefined ? open : internalOpen
+  const setOpenState = onOpenChange || setInternalOpen
 
   const initialDate = formatDate(defaultDate || new Date())
 
@@ -57,16 +65,30 @@ export default function QuickEventDialog({ trigger, defaultDate }: Props) {
     color: 'emerald'
   })
 
-  function reset() {
-    setForm({
-      title: '',
-      event_date: initialDate,
-      start_time: '',
-      end_time: '',
-      recurrence_rule: '',
-      color: 'emerald'
-    })
-  }
+  // 打开时回填表单
+  useEffect(() => {
+    if (openState) {
+      if (event) {
+        setForm({
+          title: event.title || '',
+          event_date: event.event_date || initialDate,
+          start_time: event.start_time || '',
+          end_time: event.end_time || '',
+          recurrence_rule: event.recurrence_rule || '',
+          color: event.color || 'emerald'
+        })
+      } else {
+        setForm({
+          title: '',
+          event_date: initialDate,
+          start_time: '',
+          end_time: '',
+          recurrence_rule: '',
+          color: 'emerald'
+        })
+      }
+    }
+  }, [openState, event])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -76,34 +98,48 @@ export default function QuickEventDialog({ trigger, defaultDate }: Props) {
     }
     // 允许跨日：end_time 早于 start_time 视为第二天结束，不再报错
     try {
-      await createMutation.mutateAsync({
-        title: form.title.trim(),
-        event_date: form.event_date,
-        start_time: form.start_time || undefined,
-        end_time: form.end_time || undefined,
-        recurrence_rule: form.recurrence_rule || undefined,
-        color: form.color
-      })
-      toast.success('事件已添加')
-      setOpen(false)
-      reset()
+      if (isEdit && event) {
+        await updateMutation.mutateAsync({
+          id: event.id,
+          patch: {
+            title: form.title.trim(),
+            event_date: form.event_date,
+            start_time: form.start_time || undefined,
+            end_time: form.end_time || undefined,
+            recurrence_rule: form.recurrence_rule || undefined,
+            color: form.color
+          }
+        })
+        toast.success('事件已更新')
+      } else {
+        await createMutation.mutateAsync({
+          title: form.title.trim(),
+          event_date: form.event_date,
+          start_time: form.start_time || undefined,
+          end_time: form.end_time || undefined,
+          recurrence_rule: form.recurrence_rule || undefined,
+          color: form.color
+        })
+        toast.success('事件已添加')
+      }
+      setOpenState(false)
     } catch (e: any) {
-      toast.error(e?.message || '添加失败')
+      toast.error(e?.message || (isEdit ? '更新失败' : '添加失败'))
     }
   }
 
+  const pending = createMutation.isPending || updateMutation.isPending
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" />新建事件
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={openState} onOpenChange={setOpenState}>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>添加日程事件</DialogTitle>
+          <DialogTitle>{isEdit ? '编辑事件' : '添加日程事件'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
@@ -179,9 +215,9 @@ export default function QuickEventDialog({ trigger, defaultDate }: Props) {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? '添加中...' : '添加'}
+            <Button type="button" variant="outline" onClick={() => setOpenState(false)}>取消</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? (isEdit ? '保存中...' : '添加中...') : (isEdit ? '保存' : '添加')}
             </Button>
           </DialogFooter>
         </form>
