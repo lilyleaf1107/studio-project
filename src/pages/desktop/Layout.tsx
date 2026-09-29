@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -187,6 +187,7 @@ export default function DesktopLayout() {
     return visible.map((n, index) => {
       const isOver = overGroup === group && overIndex === index
       const isDraggingThis = isDragging && dragIndex.current === index && dragGroup.current === group
+      const num = String(index + 1).padStart(2, '0')
       return (
         <div
           key={n.to}
@@ -202,27 +203,28 @@ export default function DesktopLayout() {
         >
           {/* 拖拽放置指示线 */}
           {isOver && (
-            <div className="absolute -top-0.5 left-0 right-0 h-0.5 bg-blue-400 rounded-full z-10" />
+            <div className="absolute -top-0.5 left-0 right-0 h-0.5 rounded-full z-10" style={{ backgroundColor: 'var(--sidebar-active)' }} />
           )}
           <NavLink
             to={n.to}
             end={n.to === '/'}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 select-none',
+                'flex items-center gap-3 px-3 py-2.5 text-sm transition-all duration-200 select-none border-l-[3px]',
                 isActive
-                  ? 'text-white shadow-sm'
-                  : 'hover:!text-white [&:hover]:bg-[var(--sidebar-hover)]'
+                  ? 'border-[var(--sidebar-active)] font-semibold'
+                  : 'border-transparent hover:bg-[var(--sidebar-hover)]'
               )
             }
             style={({ isActive }) =>
               isActive
-                ? { backgroundColor: 'var(--sidebar-active)' }
+                ? { backgroundColor: 'var(--sidebar-hover)', color: 'var(--sidebar-active)' }
                 : { color: 'var(--sidebar-text)' }
             }
           >
-            <n.icon className="h-4.5 w-4.5 shrink-0" />
-            <span className="flex-1 font-medium">{n.label}</span>
+            <span className="font-mono-archive text-xs w-6 shrink-0 opacity-70">{num}.</span>
+            <n.icon className="h-4 w-4 shrink-0" />
+            <span className="flex-1">{n.label}</span>
           </NavLink>
         </div>
       )
@@ -230,57 +232,57 @@ export default function DesktopLayout() {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-100">
+    <div className="min-h-screen flex" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <aside
-        className="w-64 shrink-0 text-slate-100 flex flex-col min-h-screen sticky top-0 h-screen"
-        style={{ backgroundColor: 'var(--sidebar-bg)' }}
+        className="w-64 shrink-0 flex flex-col min-h-screen sticky top-0 h-screen border-r"
+        style={{ backgroundColor: 'var(--sidebar-bg)', borderColor: 'hsl(var(--border))' }}
       >
-        <div className="p-5 border-b border-slate-700/50 shrink-0">
+        <div className="p-5 border-b shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
           <div className="flex items-center gap-3">
             <div
-              className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-lg"
-              style={{ backgroundColor: 'var(--sidebar-active)' }}
+              className="h-10 w-10 flex items-center justify-center font-mono-archive font-bold text-lg"
+              style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
             >
-              <FolderKanban className="h-5 w-5" />
+              档
             </div>
             <div>
-              <div className="font-bold leading-tight text-base">工作室项目</div>
-              <div className="text-xs text-slate-400">管理系统</div>
+              <div className="font-bold leading-tight text-base" style={{ color: 'var(--sidebar-text)' }}>工作室项目</div>
+              <div className="text-xs font-mono-archive" style={{ color: 'hsl(var(--muted-foreground))' }}>ARCHIVE · v1.0</div>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+        <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
           <div className="space-y-1">
-            <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              主菜单
+            <div className="px-3 mb-2 text-xs font-mono-archive" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              — 主菜单
             </div>
             {renderGroup(mainMenu, 'main')}
           </div>
 
           <div className="space-y-1">
-            <div className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              数据与管理
+            <div className="px-3 mb-2 text-xs font-mono-archive" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              — 数据与管理
             </div>
             {renderGroup(adminMenu, 'admin')}
           </div>
         </nav>
 
-        <div className="border-t border-slate-700/50 p-4 shrink-0">
+        <div className="border-t p-4 shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
           <div className="flex items-center gap-3 mb-3">
             <div
-              className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md"
-              style={{ background: 'linear-gradient(135deg, var(--sidebar-active), var(--sidebar-bg))' }}
+              className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold"
+              style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
             >
               {profile?.name?.slice(0, 1) || 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate text-white">{profile?.name || '未设置昵称'}</div>
-              <div className="text-xs text-slate-400">
+              <div className="text-sm font-semibold truncate" style={{ color: 'var(--sidebar-text)' }}>{profile?.name || '未设置昵称'}</div>
+              <div className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                 {profile?.role ? ROLE_LABELS[profile.role] : ''}
               </div>
               {profile?.job_title && (
-                <div className="text-xs text-slate-400 mt-0.5">
+                <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
                   身份卡：{profile.job_title}
                 </div>
               )}
@@ -289,7 +291,8 @@ export default function DesktopLayout() {
           <Button
             variant="outline"
             size="sm"
-            className="w-full gap-2 bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-slate-500"
+            className="w-full gap-2"
+            style={{ borderColor: 'hsl(var(--border))', color: 'var(--sidebar-text)' }}
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />

@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 
 export interface ThemePreview {
   bg: string
@@ -15,39 +15,39 @@ export interface ThemeOption {
 export const THEMES: ThemeOption[] = [
   {
     key: 'default',
-    name: '默认（深石板）',
-    description: '深石板侧栏 + 雾蓝灰强调',
-    preview: { bg: '#1f2937', active: '#5b8def' }
+    name: '档案橄榄',
+    description: '羊皮纸侧栏 + 橄榄绿强调',
+    preview: { bg: '#ede4d0', active: '#5a6b3f' }
   },
   {
     key: 'blue',
-    name: '雾蓝灰',
-    description: '雾蓝侧栏 + 灰蓝强调',
-    preview: { bg: '#e8edf2', active: '#7a93a8' }
+    name: '档案靛蓝',
+    description: '羊皮纸侧栏 + 靛蓝强调',
+    preview: { bg: '#e6e2d8', active: '#4a6478' }
   },
   {
     key: 'green',
-    name: '灰绿',
-    description: '灰绿侧栏 + 莫兰迪绿强调',
-    preview: { bg: '#e6ede9', active: '#7a9b8e' }
+    name: '档案苔绿',
+    description: '羊皮纸侧栏 + 苔绿强调',
+    preview: { bg: '#e8e6d6', active: '#5a6b3f' }
   },
   {
     key: 'purple',
-    name: '雾紫灰',
-    description: '雾紫侧栏 + 灰紫强调',
-    preview: { bg: '#ebe8f0', active: '#9088a8' }
+    name: '档案茄紫',
+    description: '羊皮纸侧栏 + 茄紫强调',
+    preview: { bg: '#e8e2d6', active: '#5a4f6e' }
   },
   {
     key: 'pink',
-    name: '藕粉灰',
-    description: '藕粉侧栏 + 灰粉强调',
-    preview: { bg: '#efe6e8', active: '#a88a93' }
+    name: '档案玫瑰',
+    description: '羊皮纸侧栏 + 玫瑰强调',
+    preview: { bg: '#ece2d8', active: '#7a4f58' }
   },
   {
     key: 'amber',
-    name: '米灰',
-    description: '米灰侧栏 + 莫兰迪黄强调',
-    preview: { bg: '#efe9e0', active: '#a8957a' }
+    name: '档案赭石',
+    description: '羊皮纸侧栏 + 赭石强调',
+    preview: { bg: '#ece0d0', active: '#8b5a2b' }
   }
 ]
 

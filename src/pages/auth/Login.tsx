@@ -53,24 +53,34 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-blue-50/40 to-teal-50/30">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Card className="w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
-            <Briefcase className="h-7 w-7" />
+        {/* 档案编号头 */}
+        <div className="flex items-center justify-between mb-6 pb-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+          <span className="font-mono-archive text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            FILE NO. {mode === 'login' ? '001' : '002'} / {mode === 'login' ? 'LOGIN' : 'REGISTER'}
+          </span>
+          <span className="font-mono-archive text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+            ARCHIVE
+          </span>
+        </div>
+
+        <div className="text-center mb-6">
+          <div className="inline-flex h-12 w-12 items-center justify-center mb-4 font-mono-archive font-bold text-xl" style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+            档
           </div>
           <h1 className="text-2xl font-bold tracking-tight">工作室项目管理</h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            {mode === 'login' ? '使用账号登录系统' : '注册一个新账号'}
+          <p className="text-sm text-muted-foreground mt-2 font-mono-archive">
+            {mode === 'login' ? '— 登录系统 —' : '— 注册账号 —'}
           </p>
         </div>
 
         {/* 邮箱/手机号 切换 */}
-        <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-lg">
+        <div className="flex gap-2 mb-4 p-1 rounded-md" style={{ backgroundColor: 'hsl(var(--muted))' }}>
           <button
             type="button"
             className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-              loginType === 'phone' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'
+              loginType === 'phone' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
             }`}
             onClick={() => { setLoginType('phone'); setIdentifier('') }}
           >
@@ -79,7 +89,7 @@ export default function Login() {
           <button
             type="button"
             className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-              loginType === 'email' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'
+              loginType === 'email' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
             }`}
             onClick={() => { setLoginType('email'); setIdentifier('') }}
           >
@@ -90,7 +100,7 @@ export default function Login() {
         <form onSubmit={onSubmit} className="space-y-4">
           {mode === 'register' && (
             <div className="space-y-2">
-              <Label>姓名</Label>
+              <Label className="font-mono-archive text-xs">姓名</Label>
               <Input
                 placeholder="请输入您的姓名"
                 value={name}
@@ -100,10 +110,10 @@ export default function Login() {
             </div>
           )}
           <div className="space-y-2">
-            <Label>{loginType === 'phone' ? '手机号' : '邮箱'}</Label>
+            <Label className="font-mono-archive text-xs">{loginType === 'phone' ? '手机号' : '邮箱'}</Label>
             {loginType === 'phone' ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground px-3 py-2 bg-slate-100 rounded-md whitespace-nowrap">+86</span>
+                <span className="text-sm text-muted-foreground px-3 py-2 rounded-md whitespace-nowrap font-mono-archive" style={{ backgroundColor: 'hsl(var(--muted))' }}>+86</span>
                 <Input
                   type="tel"
                   placeholder="请输入 11 位手机号"
@@ -126,7 +136,7 @@ export default function Login() {
             )}
           </div>
           <div className="space-y-2">
-            <Label>密码</Label>
+            <Label className="font-mono-archive text-xs">密码</Label>
             <Input
               type="password"
               placeholder="至少 6 位"

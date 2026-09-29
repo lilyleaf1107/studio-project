@@ -66,24 +66,28 @@ export default function MobileLayout() {
       </main>
 
       {/* 底部Tab */}
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-md z-40">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-md z-40" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="grid grid-cols-5 max-w-md mx-auto">
-          {tabs.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end={t.end}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] transition-colors',
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                )
-              }
-            >
-              <t.icon className="h-5 w-5" />
-              <span>{t.label}</span>
-            </NavLink>
-          ))}
+          {tabs.map((t, i) => {
+            const num = String(i + 1).padStart(2, '0')
+            return (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                end={t.end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] transition-colors border-t-[3px]',
+                    isActive ? 'text-primary border-primary' : 'text-muted-foreground border-transparent'
+                  )
+                }
+              >
+                <span className="font-mono-archive text-[8px] leading-none">{num}</span>
+                <t.icon className="h-5 w-5" />
+                <span>{t.label}</span>
+              </NavLink>
+            )
+          })}
         </div>
       </nav>
     </div>
